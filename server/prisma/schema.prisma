@@ -1,0 +1,381 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         String     @default("BILLING") // ADMIN, BILLING, OPERATIONS, ACCOUNTANT, VIEWER
+  avatarUrl    String?
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model CompanySettings {
+  id                    String   @id @default("default")
+  companyName           String   @default("MSK LOGISTIC SOLUTION")
+  tradeName             String   @default("MSK LOGISTIC SOLUTION")
+  gstin                 String   @default("27AXWPK4562G1ZX")
+  pan                   String   @default("AXWPK4562G")
+  tan                   String   @default("PNES72845D")
+  address               String   @default("JNPT Township Colony, Sector - 3, Building No. B/48, Office No. 3")
+  city                  String   @default("Navi Mumbai")
+  state                 String   @default("Maharashtra")
+  stateCode             String   @default("27")
+  pincode               String   @default("400702")
+  phone                 String   @default("+91 8104592823")
+  email                 String   @default("accounts@msklogisticsolution.com")
+  website               String   @default("www.msklogisticsolution.com")
+  logoUrl               String?  @default("/images/msk-logo.png")
+  isoLogoUrl            String?  @default("/images/iso-logo.png")
+  signatureUrl          String?
+  invoiceTitle          String   @default("TAX INVOICE (EXPORT STUFFING CONTAINER)")
+  invoicePrefix         String   @default("MSK/HT")
+  nextInvoiceSeq        Int      @default(1)
+  bankName              String   @default("ICICI Bank")
+  bankAccountName       String   @default("MSK LOGISTIC SOLUTION")
+  bankAccountNo         String   @default("574005000006")
+  bankIfsc              String   @default("ICIC0005740")
+  bankBranch            String   @default("Dronagiri Node (Nhava Sheva)")
+  termsAndConditions    String   @default("1. Payment due within 15 days of invoice date.\n2. Interest @ 18% p.a. will be charged after due date.\n3. All disputes subject to Mumbai Jurisdiction.")
+  invoiceNotes          String   @default("Thank you for your business!")
+  freeEmptyGroundDays   Int      @default(3)
+  freeLoadedGroundDays  Int      @default(5)
+  cgstDefaultRate       Float    @default(9.0)
+  sgstDefaultRate       Float    @default(9.0)
+  igstDefaultRate       Float    @default(18.0)
+  whatsappPhoneId       String   @default("")
+  whatsappBusinessAccountId String @default("")
+  whatsappAccessToken   String   @default("")
+  whatsappVerifyToken   String   @default("")
+  defaultCurrency       String   @default("INR")
+  isWhatsappMock        Boolean  @default(true)
+  gstApiBaseUrl         String   @default("https://api.mastergst.com")
+  gstApiKey             String   @default("")
+  gstApiSecret          String   @default("")
+  isGstMock             Boolean  @default(true)
+  updatedAt             DateTime @updatedAt
+}
+
+model Party {
+  id                 String         @id @default(uuid())
+  legalName          String
+  tradeName          String?
+  gstin              String         @unique
+  gstStatus          String         @default("Active")
+  registeredAddress  String
+  billingAddress     String?
+  shippingAddress    String?
+  city               String
+  state              String
+  stateCode          String
+  pincode            String
+  contactPerson      String?
+  mobile             String?
+  email              String?
+  vendorCode         String?
+  notes              String?
+  isGstVerified      Boolean        @default(false)
+  gstVerifiedAt      DateTime?
+  hasManualOverride  Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  addresses          PartyAddress[]
+  contacts           PartyContact[]
+  jobs               Job[]
+  containers         Container[]
+  invoices           Invoice[]
+  payments           Payment[]
+}
+
+model PartyAddress {
+  id           String   @id @default(uuid())
+  partyId      String
+  party        Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  label        String   @default("Registered") // Registered, Billing, Shipping, CFS
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  stateCode    String
+  pincode      String
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model PartyContact {
+  id          String   @id @default(uuid())
+  partyId     String
+  party       Party    @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  name        String
+  designation String?
+  phone       String?
+  mobile      String?
+  email       String?
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Exporter {
+  id            String      @id @default(uuid())
+  name          String
+  gstin         String?
+  iecCode       String?     // Import Export Code
+  address       String?
+  city          String?
+  state         String?
+  stateCode     String?
+  pincode       String?
+  contactPerson String?
+  phone         String?
+  email         String?
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  jobs          Job[]
+  containers    Container[]
+  invoices      Invoice[]
+}
+
+model Job {
+  id             String      @id @default(uuid())
+  jobNumber      String      @unique
+  partyId        String
+  party          Party       @relation(fields: [partyId], references: [id])
+  exporterId     String?
+  exporter       Exporter?   @relation(fields: [exporterId], references: [id])
+  sbNumber       String?     // Shipping Bill Numbers e.g. "6010085/18.08.2026, 6007882/17.08.2026"
+  bookingDetails String?
+  shipmentRef    String?
+  shipmentDate   DateTime?
+  port           String?     @default("Nhava Sheva (JNPT)")
+  destination    String?
+  remarks        String?
+  status         String      @default("ACTIVE") // DRAFT, ACTIVE, COMPLETED, CANCELLED
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  containers     Container[]
+  invoices       Invoice[]
+}
+
+model Container {
+  id                   String             @id @default(uuid())
+  containerNumber      String             @unique
+  size                 String             @default("20 FT") // 20 FT, 40 FT, 40 FT HC, 45 FT
+  type                 String             @default("DRY")   // DRY, REEFER, FLAT RACK, OPEN TOP
+  partyId              String
+  party                Party              @relation(fields: [partyId], references: [id])
+  jobId                String?
+  job                  Job?               @relation(fields: [jobId], references: [id])
+  exporterId           String?
+  exporter             Exporter?          @relation(fields: [exporterId], references: [id])
+  cartingDate          DateTime?
+  emptyGateInDate      DateTime?
+  stuffingDate         DateTime?
+  lddOutDate           DateTime?
+  emptyGroundRentDays  Int                @default(0)
+  daysAfterCarting     Int                @default(0)
+  loadedGroundDays     Int                @default(0)
+  isOverride           Boolean            @default(false)
+  overrideReason       String?
+  htCharges            Float              @default(0)
+  logisticsCharges     Float              @default(0)
+  emptyTransportCharges Float             @default(0)
+  otherCharges         Float              @default(0)
+  status               String             @default("ACTIVE") // GATE_IN, CARTING, STUFFED, LDD_OUT, COMPLETED
+  remarks              String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  invoiceContainers    InvoiceContainer[]
+  invoiceItems         InvoiceItem[]
+}
+
+model ChargeMaster {
+  id          String        @id @default(uuid())
+  code        String        @unique
+  name        String
+  category    String        @default("LOGISTICS") // HANDLING_TRANSPORT, LOGISTICS, STORAGE, DUNNAGE, COMPLIANCE
+  hsnSacCode  String        @default("996719")
+  unit        String        @default("PER_CONTAINER") // PER_CONTAINER, PER_CBM, PER_MT, PER_DAY, LUMPSUM, PER_PIECE
+  defaultRate Float         @default(0)
+  gstRate     Float         @default(18.0)
+  isActive    Boolean       @default(true)
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  invoiceItems InvoiceItem[]
+}
+
+model Invoice {
+  id             String             @id @default(uuid())
+  invoiceNumber  String             @unique
+  invoiceDate    DateTime           @default(now())
+  dueDate        DateTime?
+  partyId        String
+  party          Party              @relation(fields: [partyId], references: [id])
+  exporterId     String?
+  exporter       Exporter?          @relation(fields: [exporterId], references: [id])
+  jobId          String?
+  job            Job?               @relation(fields: [jobId], references: [id])
+  status         String             @default("DRAFT") // DRAFT, UNDER_REVIEW, FINALIZED, SENT, PAID, PARTIALLY_PAID, OVERDUE, CANCELLED
+  currency       String             @default("INR")
+  billToName     String
+  billToGstin    String
+  billToAddress  String
+  billToState    String
+  billToStateCode String
+  consigneeName  String?
+  consigneeAddress String?
+  sbNumbers      String?
+  subtotal       Float              @default(0)
+  discountAmount Float              @default(0)
+  taxableAmount  Float              @default(0)
+  isInterState   Boolean            @default(false)
+  cgstRate       Float              @default(9.0)
+  cgstAmount     Float              @default(0)
+  sgstRate       Float              @default(9.0)
+  sgstAmount     Float              @default(0)
+  igstRate       Float              @default(18.0)
+  igstAmount     Float              @default(0)
+  totalGst       Float              @default(0)
+  roundOff       Float              @default(0)
+  grandTotal     Float              @default(0)
+  amountInWords  String?
+  paidAmount     Float              @default(0)
+  balanceAmount  Float              @default(0)
+  terms          String?
+  notes          String?
+  pdfPath        String?
+  finalizedAt    DateTime?
+  finalizedBy    String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  containers     InvoiceContainer[]
+  items          InvoiceItem[]
+  payments       Payment[]
+  whatsAppMessages WhatsAppMessage[]
+}
+
+model InvoiceContainer {
+  id                String    @id @default(uuid())
+  invoiceId         String
+  invoice           Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  containerId       String?
+  container         Container? @relation(fields: [containerId], references: [id])
+  containerNumber   String
+  size              String
+  type              String
+  cartingDate       DateTime?
+  emptyGateInDate   DateTime?
+  stuffingDate      DateTime?
+  lddOutDate        DateTime?
+  emptyGroundDays       Int       @default(0)
+  daysAfterCarting      Int       @default(0)
+  loadedGroundDays      Int       @default(0)
+  htCharges             Float     @default(0)
+  logisticsCharges      Float     @default(0)
+  emptyTransportCharges Float     @default(0)
+}
+
+model InvoiceItem {
+  id             String        @id @default(uuid())
+  invoiceId      String
+  invoice        Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  containerId    String?
+  container      Container?    @relation(fields: [containerId], references: [id])
+  chargeMasterId String?
+  chargeMaster   ChargeMaster? @relation(fields: [chargeMasterId], references: [id])
+  srNo           Int
+  description    String
+  hsnSacCode     String
+  quantity       Float         @default(1)
+  unit           String        @default("PER_CONTAINER")
+  rate           Float         @default(0)
+  amount         Float         @default(0)
+  discount       Float         @default(0)
+  taxableValue   Float         @default(0)
+  cgstRate       Float         @default(9.0)
+  cgstAmount     Float         @default(0)
+  sgstRate       Float         @default(9.0)
+  sgstAmount     Float         @default(0)
+  igstRate       Float         @default(18.0)
+  igstAmount     Float         @default(0)
+  totalAmount    Float         @default(0)
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  partyId         String
+  party           Party    @relation(fields: [partyId], references: [id])
+  amount          Float
+  currency        String   @default("INR")
+  paymentDate     DateTime @default(now())
+  paymentMode     String   @default("NEFT/RTGS") // NEFT/RTGS, UPI, Cheque, Cash, Net Banking
+  referenceNumber String?
+  notes           String?
+  recordedBy      String?
+  createdAt       DateTime @default(now())
+}
+
+model WhatsAppMessage {
+  id                String    @id @default(uuid())
+  recipientPhone    String
+  recipientName     String?
+  invoiceId         String?
+  invoice           Invoice?  @relation(fields: [invoiceId], references: [id])
+  messageType       String    @default("INVOICE_PDF") // INVOICE_PDF, INVOICE_NOTIFICATION, PAYMENT_REMINDER, JOB_UPDATE, CONTAINER_UPDATE, CUSTOM
+  templateName      String?
+  status            String    @default("SENT") // QUEUED, SENT, DELIVERED, READ, FAILED
+  payloadJson       String?
+  responseJson      String?
+  externalMessageId String?
+  sentAt            DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+}
+
+model WhatsAppTemplate {
+  id          String   @id @default(uuid())
+  templateName String  @unique
+  category    String   @default("UTILITY")
+  language    String   @default("en_US")
+  bodyText    String
+  headerText  String?
+  footerText  String?
+  parameters  String?  // JSON string of parameter keys
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  user          User?    @relation(fields: [userId], references: [id])
+  userName      String?
+  action        String   // CREATE, UPDATE, DELETE, OVERRIDE, FINALIZE, SEND_WHATSAPP, PAYMENT_RECORDED
+  entityType    String   // PARTY, INVOICE, CONTAINER, JOB, CHARGE, PAYMENT, SETTINGS
+  entityId      String
+  details       String
+  oldValuesJson String?
+  newValuesJson String?
+  ipAddress     String?  @default("127.0.0.1")
+  createdAt     DateTime @default(now())
+}

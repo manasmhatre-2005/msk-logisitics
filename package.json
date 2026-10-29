@@ -1,0 +1,27 @@
+{
+  "name": "logistics-erp",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "LogiBill ERP - Modern Logistics Management, Billing & Invoicing System",
+  "main": "server/dist/server.js",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev:server\" \"npm run dev:client\"",
+    "build:server": "npm --prefix server run prisma:generate && npm --prefix server run build",
+    "build:client": "npm --prefix client run build",
+    "build": "npm run build:server && npm run build:client",
+    "start": "npm --prefix server start",
+    "prisma:generate": "npm --prefix server run prisma:generate",
+    "prisma:push": "npm --prefix server run prisma:push",
+    "prisma:seed": "npm --prefix server run prisma:seed",
+    "setup": "npm --prefix server run prisma:generate && npm --prefix server run prisma:push && npm --prefix server run prisma:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
