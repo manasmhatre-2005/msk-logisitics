@@ -57,13 +57,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Brand Header */}
       <div className="h-20 flex items-center px-4 border-b border-slate-800/80 bg-[#0F172A]/70 backdrop-blur-xs">
         <div className="flex items-center gap-3 overflow-hidden w-full">
-          <div className="bg-white p-1 rounded-lg shrink-0 shadow-sm flex items-center justify-center">
-            <img
-              src="/images/msk-logo.png"
-              alt="MSK LOGISTIC SOLUTION"
-              className="h-11 w-auto max-w-[54px] object-contain drop-shadow-xs"
-            />
-          </div>
+          <img
+            src="/images/msk-logo.png"
+            alt="MSK LOGISTIC SOLUTION"
+            className="h-12 w-auto max-w-[56px] object-contain shrink-0 drop-shadow-md"
+          />
           <div className="truncate">
             <span className="font-black text-white text-sm tracking-tight block truncate">
               MSK LOGISTIC
@@ -141,20 +139,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Premium Logistics-Themed Visual Element Near Bottom */}
       <div className="px-3 pb-2 pt-1">
-        <div className="rounded-xl border border-slate-800/80 bg-gradient-to-br from-slate-900/90 to-slate-950/90 p-3 text-xs shadow-inner">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-300 uppercase tracking-wider">
-              <Anchor className="w-3.5 h-3.5 text-red-400" />
-              <span>JNPT Port Gateway</span>
+        <div className="rounded-xl border border-slate-800/80 bg-gradient-to-br from-slate-900/95 to-slate-950/95 overflow-hidden shadow-inner group">
+          <div className="relative h-24 overflow-hidden">
+            <img
+              src="/images/trusted-logistics-partner.png"
+              alt="Your Trusted Logistics Partner"
+              className="w-full h-full object-cover object-top opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            <div className="absolute bottom-1.5 left-2.5 right-2.5 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-white tracking-wide drop-shadow-sm flex items-center gap-1">
+                <Anchor className="w-3 h-3 text-red-500" />
+                Nhava Sheva Yard
+              </span>
+              <span className="inline-flex items-center gap-1 text-[8.5px] text-emerald-400 font-semibold bg-emerald-950/80 border border-emerald-800/50 px-1.5 py-0.5 rounded">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                CFS 24/7
+              </span>
             </div>
-            <span className="inline-flex items-center gap-1 text-[9px] text-emerald-400 font-semibold bg-emerald-950/60 border border-emerald-800/40 px-1.5 py-0.5 rounded">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              Live Yard
-            </span>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1 leading-tight">
-            Nhava Sheva CFS & Empty Ground Tracking active.
-          </p>
         </div>
       </div>
 

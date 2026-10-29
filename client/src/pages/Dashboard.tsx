@@ -85,13 +85,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Subtle decorative background watermarks */}
         <div className="absolute right-0 top-0 -mt-10 -mr-10 h-72 w-72 rounded-full bg-red-600/10 blur-3xl pointer-events-none" />
         <div className="absolute right-32 bottom-0 h-40 w-40 rounded-full bg-blue-600/10 blur-2xl pointer-events-none" />
-        <div className="absolute right-8 top-1/2 -translate-y-1/2 opacity-10 hidden xl:block pointer-events-none">
-          <Ship className="w-64 h-64 text-slate-100" />
-        </div>
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <img
+                src="/images/msk-logo.png"
+                alt="MSK LOGISTIC SOLUTION"
+                className="h-10 w-auto object-contain drop-shadow-md"
+              />
               <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-[11px] font-bold text-red-400 border border-red-500/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                 MSK LOGISTIC SOLUTION ERP
@@ -127,29 +129,39 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* Quick Action Buttons directly in Hero */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
-            <button
-              onClick={onOpenInvoiceWizard}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-red-950/60 transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Create Tax Invoice</span>
-            </button>
-            <button
-              onClick={onOpenGstinModal}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-red-500/50 px-4 py-2.5 text-xs font-semibold transition-all"
-            >
-              <Search className="w-4 h-4 text-red-400" />
-              <span>GSTIN Auto-Fill</span>
-            </button>
-            <button
-              onClick={onOpenAddJobModal}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3.5 py-2.5 text-xs font-semibold transition-all"
-            >
-              <Ship className="w-4 h-4 text-blue-400" />
-              <span>New Job</span>
-            </button>
+          {/* Logistics Hero Banner Image & Quick Action Buttons */}
+          <div className="flex flex-col items-end gap-3 shrink-0">
+            <div className="hidden xl:block max-w-[340px] rounded-xl overflow-hidden bg-slate-900/60 p-2 border border-slate-800/80 shadow-md">
+              <img
+                src="/images/logistics-hero-banner.png"
+                alt="Multimodal Freight Logistics"
+                className="w-full h-auto object-contain rounded"
+              />
+            </div>
+
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto">
+              <button
+                onClick={onOpenInvoiceWizard}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-red-950/60 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Create Tax Invoice</span>
+              </button>
+              <button
+                onClick={onOpenGstinModal}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-red-500/50 px-4 py-2.5 text-xs font-semibold transition-all"
+              >
+                <Search className="w-4 h-4 text-red-400" />
+                <span>GSTIN Auto-Fill</span>
+              </button>
+              <button
+                onClick={onOpenAddJobModal}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3.5 py-2.5 text-xs font-semibold transition-all"
+              >
+                <Ship className="w-4 h-4 text-blue-400" />
+                <span>New Job</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
