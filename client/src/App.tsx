@@ -119,6 +119,7 @@ const MainApp: React.FC = () => {
           {/* Dashboard */}
           {currentTab === 'dashboard' && (
             <Dashboard
+              onOpenSearch={() => setIsSearchModalOpen(true)}
               onOpenGstinModal={() => setIsGstinModalOpen(true)}
               onOpenInvoiceWizard={() => {
                 setPrefilledPartyForWizard(null);
