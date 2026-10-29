@@ -56,13 +56,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside className="w-64 bg-[#0B1120] text-slate-300 border-r border-slate-800/80 flex flex-col h-screen select-none shrink-0 transition-colors">
       {/* Brand Header */}
       <div className="h-20 flex items-center px-4 border-b border-slate-800/80 bg-[#0F172A]/70 backdrop-blur-xs">
-        <div className="flex items-center gap-3 overflow-hidden w-full">
+        <div className="flex items-center gap-2.5 overflow-hidden w-full">
           <img
             src="/images/msk-logo.png"
             alt="MSK LOGISTIC SOLUTION"
-            className="h-12 w-auto max-w-[56px] object-contain shrink-0 drop-shadow-md"
+            className="h-10 w-auto object-contain shrink-0 drop-shadow-md"
           />
-          <div className="truncate">
+          <div className="min-w-0 flex-1 truncate">
             <span className="font-black text-white text-sm tracking-tight block truncate">
               MSK LOGISTIC
             </span>
@@ -70,7 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               SOLUTION ERP
             </span>
             <span className="inline-flex items-center gap-1.5 text-[9px] text-slate-400 font-medium">
-              <span className="relative flex h-1.5 w-1.5">
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
               </span>
