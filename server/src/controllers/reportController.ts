@@ -64,6 +64,62 @@ export class ReportController {
         },
       });
 
+      // Operational Breakdown
+      const containerStatusCounts: Record<string, number> = {};
+      const allContainersForStatus = await prisma.container.findMany({
+        select: { status: true },
+      });
+      for (const c of allContainersForStatus) {
+        containerStatusCounts[c.status] = (containerStatusCounts[c.status] || 0) + 1;
+      }
+
+      // Invoice status breakdown
+      const invoiceStatusCounts: Record<string, number> = {};
+      for (const inv of allInvoices) {
+        invoiceStatusCounts[inv.status] = (invoiceStatusCounts[inv.status] || 0) + 1;
+      }
+
+      // Monthly billing breakdown (Last 6 months)
+      const monthlyTrend: { month: string; billing: number; gst: number; count: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const nextD = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+        const monthLabel = d.toLocaleString('en-US', { month: 'short' });
+
+        const monthInvs = allInvoices.filter((inv) => {
+          const invDate = new Date(inv.invoiceDate);
+          return invDate >= d && invDate < nextD;
+        });
+
+        monthlyTrend.push({
+          month: monthLabel,
+          billing: monthInvs.reduce((sum, inv) => sum + inv.grandTotal, 0),
+          gst: monthInvs.reduce((sum, inv) => sum + inv.totalGst, 0),
+          count: monthInvs.length,
+        });
+      }
+
+      // Real upcoming activities & due dates from database
+      const upcomingInvoices = await prisma.invoice.findMany({
+        where: {
+          dueDate: { not: null },
+          balanceAmount: { gt: 0 },
+        },
+        take: 5,
+        orderBy: { dueDate: 'asc' },
+        include: { party: { select: { legalName: true } } },
+      });
+
+      const upcomingActivities = upcomingInvoices.map((inv) => ({
+        id: inv.id,
+        title: `Payment Due: ${inv.invoiceNumber}`,
+        subtitle: inv.party?.legalName || inv.billToName,
+        date: inv.dueDate,
+        type: 'INVOICE_DUE',
+        badge: `₹${inv.balanceAmount.toLocaleString('en-IN')}`,
+        status: inv.status,
+      }));
+
       return res.json({
         totalParties,
         activeJobs,
@@ -76,6 +132,10 @@ export class ReportController {
         recentInvoices,
         recentJobs,
         activeContainers,
+        containerStatusCounts,
+        invoiceStatusCounts,
+        monthlyTrend,
+        upcomingActivities,
       });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });

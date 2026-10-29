@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Search,
   Plus,
@@ -8,7 +8,10 @@ import {
   ShieldCheck,
   ChevronDown,
   LogOut,
-  Building2,
+  Bell,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types/index';
@@ -32,6 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { user, switchDemoRole, logout } = useAuth();
   const [roleMenuOpen, setRoleMenuOpen] = React.useState(false);
+  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
 
   const roles: { role: UserRole; title: string; color: string }[] = [
     { role: 'ADMIN', title: 'Admin (All Access)', color: 'text-red-700' },
@@ -102,6 +106,51 @@ export const Header: React.FC<HeaderProps> = ({
             <Box className="w-3.5 h-3.5 text-slate-500" />
             <span>Container</span>
           </button>
+        </div>
+
+        {/* Notifications Control */}
+        <div className="relative">
+          <button
+            onClick={() => setNotificationsOpen(!notificationsOpen)}
+            className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-red-600 transition-colors relative"
+            title="Operational Alerts"
+          >
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-600 ring-2 ring-white"></span>
+          </button>
+
+          {notificationsOpen && (
+            <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 text-xs">
+              <div className="px-3 pb-2 border-b border-slate-100 flex items-center justify-between">
+                <span className="font-bold text-slate-900">Operational Alerts</span>
+                <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">2 Live</span>
+              </div>
+              <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                <div className="p-2.5 hover:bg-slate-50 transition-colors flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-slate-800">GST Portal Sync Online</p>
+                    <p className="text-[10px] text-slate-500">Live GSTIN verification active for JNPT port parties.</p>
+                  </div>
+                </div>
+                <div className="p-2.5 hover:bg-slate-50 transition-colors flex items-start gap-2">
+                  <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-slate-800">CFS Carting Tracking</p>
+                    <p className="text-[10px] text-slate-500">Empty & Loaded ground days calculating automatically.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="pt-2 px-3 border-t border-slate-100 text-center">
+                <button
+                  onClick={() => setNotificationsOpen(false)}
+                  className="text-[11px] font-semibold text-red-600 hover:text-red-700"
+                >
+                  Close Alerts
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Demo Role Switcher Dropdown */}

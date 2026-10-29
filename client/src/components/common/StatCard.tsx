@@ -7,6 +7,7 @@ interface StatCardProps {
   icon: React.ElementType;
   trend?: string;
   variant?: 'red' | 'blue' | 'emerald' | 'amber' | 'slate' | 'purple';
+  accentBorder?: 'red' | 'blue' | 'emerald' | 'amber' | 'slate';
   onClick?: () => void;
 }
 
@@ -17,6 +18,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   icon: Icon,
   trend,
   variant = 'red',
+  accentBorder,
   onClick,
 }) => {
   const iconVariants = {
@@ -28,11 +30,19 @@ export const StatCard: React.FC<StatCardProps> = ({
     purple: 'bg-purple-50 text-purple-600 border-purple-100',
   };
 
+  const accentBorderClass = accentBorder ? {
+    red: 'border-l-4 border-l-red-600',
+    blue: 'border-l-4 border-l-blue-600',
+    emerald: 'border-l-4 border-l-emerald-600',
+    amber: 'border-l-4 border-l-amber-500',
+    slate: 'border-l-4 border-l-slate-700',
+  }[accentBorder] : '';
+
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md ${
-        onClick ? 'cursor-pointer hover:border-red-300' : ''
+      className={`rounded-xl border border-slate-200 bg-white p-5 shadow-xs transition-all duration-200 hover:shadow-md hover:translate-y-[-1px] ${accentBorderClass} ${
+        onClick ? 'cursor-pointer hover:border-slate-300' : ''
       }`}
     >
       <div className="flex items-center justify-between">
