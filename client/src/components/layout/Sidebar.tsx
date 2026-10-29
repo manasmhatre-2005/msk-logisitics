@@ -57,11 +57,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Brand Header */}
       <div className="h-20 flex items-center px-4 border-b border-slate-800/80 bg-[#0F172A]/70 backdrop-blur-xs">
         <div className="flex items-center gap-2.5 overflow-hidden w-full">
-          <img
-            src="/images/msk-logo.png"
-            alt="MSK LOGISTIC SOLUTION"
-            className="h-10 w-auto object-contain shrink-0 drop-shadow-md"
-          />
+          <div className="bg-white rounded-md p-1 shrink-0 flex items-center justify-center">
+            <img
+              src="/images/msk-logo.png"
+              alt="MSK LOGISTIC SOLUTION"
+              className="h-[46px] w-auto object-contain block"
+            />
+          </div>
           <div className="min-w-0 flex-1 truncate">
             <span className="font-black text-white text-sm tracking-tight block truncate">
               MSK LOGISTIC
