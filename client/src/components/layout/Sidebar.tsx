@@ -15,8 +15,6 @@ import {
   ShieldAlert,
   PlusCircle,
   Truck,
-  Anchor,
-  Radio,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -138,30 +136,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           );
         })}
       </nav>
-
-      {/* Premium Logistics-Themed Visual Element Near Bottom */}
-      <div className="px-3 pb-2 pt-1">
-        <div className="rounded-xl border border-slate-800/80 bg-gradient-to-br from-slate-900/95 to-slate-950/95 overflow-hidden shadow-inner group">
-          <div className="relative h-24 overflow-hidden">
-            <img
-              src="/images/trusted-logistics-partner.png"
-              alt="Your Trusted Logistics Partner"
-              className="w-full h-full object-cover object-top opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-            <div className="absolute bottom-1.5 left-2.5 right-2.5 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-white tracking-wide drop-shadow-sm flex items-center gap-1">
-                <Anchor className="w-3 h-3 text-red-500" />
-                Nhava Sheva Yard
-              </span>
-              <span className="inline-flex items-center gap-1 text-[8.5px] text-emerald-400 font-semibold bg-emerald-950/80 border border-emerald-800/50 px-1.5 py-0.5 rounded">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                CFS 24/7
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* User Status Footer */}
       <div className="p-3 border-t border-slate-800/80 bg-[#0F172A]/70">
