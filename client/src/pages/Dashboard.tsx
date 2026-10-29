@@ -24,9 +24,8 @@ import {
   Compass,
   BarChart3,
   PieChart as PieChartIcon,
-  ChevronRight,
   ExternalLink,
-  ChevronLeft,
+  Package,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { StatCard } from '../components/common/StatCard';
@@ -91,10 +90,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
     (stats?.containerStatusCounts?.['COMPLETED'] || 1);
 
   const doughnutSegments = [
-    { label: 'Gate In (CFS Yard)', count: gateInCount, color: '#3B82F6', bg: 'bg-blue-500' },
-    { label: 'Under Carting', count: cartingCount, color: '#F59E0B', bg: 'bg-amber-500' },
-    { label: 'Stuffing & Lashing', count: stuffedCount, color: '#8B5CF6', bg: 'bg-purple-500' },
-    { label: 'LDD Out (Dispatched)', count: lddOutCount, color: '#10B981', bg: 'bg-emerald-500' },
+    { label: 'Gate In (CFS Yard)', count: gateInCount, color: '#168BFF', bg: 'bg-[#168BFF]' },
+    { label: 'Under Carting', count: cartingCount, color: '#FF941F', bg: 'bg-[#FF941F]' },
+    { label: 'Stuffing & Lashing', count: stuffedCount, color: '#00D6B0', bg: 'bg-[#00D6B0]' },
+    { label: 'LDD Out (Dispatched)', count: lddOutCount, color: '#FF1838', bg: 'bg-[#FF1838]' },
   ];
 
   const totalDoughnutUnits = doughnutSegments.reduce((sum, seg) => sum + seg.count, 0) || 1;
@@ -114,139 +113,176 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 font-sans">
       {/* ========================================================
-          1. CINEMATIC LOGISTICS HERO BANNER (COMPONENTS 3, 4, 5, 6)
+          EXACT AUTHORITATIVE HERO BANNER (SECTIONS 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
           ======================================================== */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#070D18] via-[#0F172A] to-[#090E1A] p-6 lg:p-8 text-white shadow-2xl border border-slate-800">
-        {/* Ambient background lighting */}
-        <div className="absolute right-0 top-0 -mt-16 -mr-16 h-96 w-96 rounded-full bg-red-600/15 blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 h-48 w-48 rounded-full bg-blue-600/10 blur-2xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-[24px] bg-[#071A30] border border-[#168BFF]/30 shadow-2xl shadow-[#071A30]/60 min-h-[420px] lg:min-h-[440px] flex flex-col justify-between p-6 sm:p-8 lg:p-10 select-none">
+        
+        {/* ATMOSPHERIC BACKGROUND LIGHTING & SMOKE (SECTION 5) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#071A30] via-[#0B1628]/95 to-[#071A30]/80 pointer-events-none z-0" />
+        <div className="absolute right-0 top-0 -mt-16 -mr-16 h-[480px] w-[480px] rounded-full bg-[#168BFF]/10 blur-[100px] pointer-events-none" />
+        <div className="absolute right-1/4 bottom-0 h-64 w-64 rounded-full bg-[#FF1838]/10 blur-[90px] pointer-events-none" />
 
-        <div className="relative z-10 space-y-6">
-          {/* Top Row: Company Branding, Verification Pills, and Actions */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-2xl">
-              <div className="flex flex-wrap items-center gap-3">
-                <img
-                  src="/images/msk-logo.png"
-                  alt="MSK LOGISTIC SOLUTION"
-                  className="h-11 w-auto object-contain drop-shadow-md"
-                />
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-[11px] font-bold text-red-400 border border-red-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                  MSK LOGISTIC SOLUTION
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-[11px] font-semibold text-emerald-400 border border-emerald-500/30">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  ISO 9001:2015
-                </span>
-              </div>
+        {/* SUBTLE WORLD MAP & ILLUMINATED ROUTE LINES (SECTION 4) */}
+        <div className="absolute right-0 top-0 bottom-0 w-full lg:w-3/5 opacity-15 pointer-events-none z-0">
+          <svg className="w-full h-full" viewBox="0 0 800 450" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Soft global coordinate grid */}
+            <circle cx="200" cy="180" r="2" fill="#168BFF" />
+            <circle cx="380" cy="140" r="3" fill="#FF1838" />
+            <circle cx="560" cy="200" r="2.5" fill="#00D6B0" />
+            <circle cx="680" cy="240" r="2" fill="#168BFF" />
+            {/* Illuminated curved route arcs */}
+            <path d="M 200 180 Q 290 80 380 140" stroke="#168BFF" strokeWidth="1.5" strokeDasharray="4 4" />
+            <path d="M 380 140 Q 470 70 560 200" stroke="#FF1838" strokeWidth="2" strokeDasharray="5 3" />
+            <path d="M 560 200 Q 620 220 680 240" stroke="#00D6B0" strokeWidth="1.5" strokeDasharray="3 3" />
+          </svg>
+        </div>
 
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white leading-tight">
-                Port Logistics & Container Drayage ERP
-              </h1>
+        {/* HIGH-QUALITY TRANSPORT SCENE ON RIGHT (SECTION 4) */}
+        <div className="absolute right-0 bottom-0 top-0 w-full lg:w-[58%] xl:w-[54%] pointer-events-none z-1 flex items-end justify-end overflow-hidden">
+          {/* Subtle gradient vignette to blend seamlessly into navy background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#071A30] via-transparent to-transparent z-10 hidden lg:block" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#071A30] via-transparent to-transparent z-10" />
+          <img
+            src="/images/transport-montage.png"
+            alt="Multimodal Transport Montage"
+            className="w-full max-h-[380px] lg:max-h-[430px] object-contain object-right-bottom drop-shadow-[0_20px_35px_rgba(0,0,0,0.8)] filter brightness-[1.02] contrast-[1.05]"
+          />
+        </div>
 
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-                Integrated container terminal operations, Nhava Sheva (JNPT) carting, ground rent
-                lifecycle calculations, and automated GST billing.
-              </p>
+        {/* TOP LEVEL CONTENT: LEFT HEADING & RIGHT-SIDE MESSAGE */}
+        <div className="relative z-20 flex flex-col lg:flex-row items-start justify-between gap-6">
+          {/* LEFT SIDE: EXACT HEADING & TAGLINE (SECTION 6) */}
+          <div className="space-y-1.5 max-w-xl">
+            {/* First Line */}
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-[#C5D0E0]">
+              WELCOME TO
+            </p>
+
+            {/* Main Heading */}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white uppercase leading-none drop-shadow-md">
+              <span className="text-[#FF1838]">MSK</span> LOGISTIC SOLUTION
+            </h1>
+
+            {/* Thin Glowing Red Line */}
+            <div className="w-14 h-[3px] bg-[#FF1838] shadow-[0_0_10px_#FF1838] rounded-full my-2.5" />
+
+            {/* Tagline */}
+            <p className="text-xs sm:text-sm font-medium text-[#C5D0E0] tracking-wide">
+              Efficient Logistics · Accurate Billing · Trusted Service
+            </p>
+          </div>
+
+          {/* RIGHT-SIDE MESSAGE: MOVING BUSINESS FORWARD (SECTION 8) */}
+          <div className="hidden lg:block text-right pr-2">
+            <span className="block text-xl lg:text-2xl font-black text-white leading-tight uppercase tracking-wider drop-shadow-md">
+              Moving
+            </span>
+            <span className="block text-xl lg:text-2xl font-black text-white leading-tight uppercase tracking-wider drop-shadow-md">
+              Business
+            </span>
+            <span className="block text-xl lg:text-2xl font-black text-[#FF1838] leading-tight uppercase tracking-wider drop-shadow-[0_0_8px_rgba(255,24,56,0.5)]">
+              Forward
+            </span>
+            <div className="w-12 h-[3px] bg-[#FF1838] shadow-[0_0_10px_#FF1838] rounded-full ml-auto mt-1.5" />
+          </div>
+        </div>
+
+        {/* MIDDLE LEVEL: FOUR HORIZONTALLY ALIGNED FEATURE HIGHLIGHTS (SECTION 7) */}
+        <div className="relative z-20 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 my-6 max-w-2xl lg:max-w-3xl">
+          {/* Feature 1: Container Management (Bright Red) */}
+          <div className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-[#FF1838] flex items-center justify-center shrink-0 shadow-lg shadow-red-950/50 group-hover:scale-105 transition-transform">
+              <Box className="w-5 h-5 text-white stroke-[2.2]" />
             </div>
-
-            {/* Component 5: Prominent Create Tax Invoice Button */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-              <button
-                onClick={onOpenInvoiceWizard}
-                className="flex items-center justify-center gap-2.5 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-95 px-6 py-3.5 text-xs font-black text-white shadow-xl shadow-red-950/80 transition-all hover:scale-105"
-              >
-                <Plus className="w-4 h-4 stroke-[3]" />
-                <span>+ CREATE TAX INVOICE</span>
-              </button>
-              <button
-                onClick={onOpenGstinModal}
-                className="flex items-center justify-center gap-2 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 hover:border-red-500/50 px-4 py-3 text-xs font-bold transition-all"
-              >
-                <Search className="w-4 h-4 text-red-400" />
-                <span>GSTIN Lookup</span>
-              </button>
+            <div>
+              <span className="text-xs font-bold text-white block tracking-tight leading-tight">
+                Container Management
+              </span>
+              <div className="w-6 h-[2px] bg-[#FF1838] mt-1 rounded-full shadow-[0_0_6px_#FF1838]" />
             </div>
           </div>
 
-          {/* Component 6: Search Field Inside the Hero Banner */}
-          <div className="pt-1">
-            <form onSubmit={handleBannerSearchSubmit} className="relative max-w-2xl">
+          {/* Feature 2: Job & Shipment Tracking (Bright Blue) */}
+          <div className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-[#168BFF] flex items-center justify-center shrink-0 shadow-lg shadow-blue-950/50 group-hover:scale-105 transition-transform">
+              <Ship className="w-5 h-5 text-white stroke-[2.2]" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-white block tracking-tight leading-tight">
+                Job & Shipment Tracking
+              </span>
+              <div className="w-6 h-[2px] bg-[#168BFF] mt-1 rounded-full shadow-[0_0_6px_#168BFF]" />
+            </div>
+          </div>
+
+          {/* Feature 3: GST Compliant Invoicing (Teal-Green) */}
+          <div className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-[#00D6B0] flex items-center justify-center shrink-0 shadow-lg shadow-teal-950/50 group-hover:scale-105 transition-transform">
+              <FileText className="w-5 h-5 text-white stroke-[2.2]" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-white block tracking-tight leading-tight">
+                GST Compliant Invoicing
+              </span>
+              <div className="w-6 h-[2px] bg-[#00D6B0] mt-1 rounded-full shadow-[0_0_6px_#00D6B0]" />
+            </div>
+          </div>
+
+          {/* Feature 4: Complete Logistics Solution (Orange) */}
+          <div className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-[#FF941F] flex items-center justify-center shrink-0 shadow-lg shadow-orange-950/50 group-hover:scale-105 transition-transform">
+              <Truck className="w-5 h-5 text-white stroke-[2.2]" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-white block tracking-tight leading-tight">
+                Complete Logistics Solution
+              </span>
+              <div className="w-6 h-[2px] bg-[#FF941F] mt-1 rounded-full shadow-[0_0_6px_#FF941F]" />
+            </div>
+          </div>
+        </div>
+
+        {/* BOTTOM LEVEL: CREATE TAX INVOICE BUTTON + DARK SEARCH FIELD (SECTIONS 9 & 10) */}
+        <div className="relative z-20 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-2xl pt-2">
+          {/* Section 9: Large Red Create Tax Invoice Button */}
+          <button
+            onClick={onOpenInvoiceWizard}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#FF1838] hover:bg-[#e01430] active:scale-95 px-6 py-3 text-xs font-black text-white shadow-xl shadow-red-950/80 transition-all hover:scale-[1.02] shrink-0"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>+ Create Tax Invoice</span>
+          </button>
+
+          {/* Section 10: Dark Search Field with Thin Blue Border */}
+          <div className="relative flex-1">
+            <form onSubmit={handleBannerSearchSubmit}>
               <div className="relative flex items-center">
-                <Search className="w-4 h-4 text-slate-400 absolute left-4 pointer-events-none" />
+                <Search className="w-4 h-4 text-[#FF1838] absolute left-3.5 pointer-events-none" />
                 <input
                   type="text"
                   value={bannerSearch}
                   onChange={(e) => setBannerSearch(e.target.value)}
                   onClick={() => onOpenSearch && onOpenSearch()}
-                  placeholder="Quick search container number, party GSTIN, invoice no, or S/Bill..."
-                  className="w-full rounded-2xl bg-slate-900/80 border border-slate-700/80 pl-11 pr-24 py-3 text-xs text-slate-200 placeholder-slate-400 focus:outline-hidden focus:border-red-500 focus:ring-1 focus:ring-red-500 backdrop-blur-md transition-all shadow-inner"
+                  placeholder="Search parties, containers, invoices, jobs..."
+                  className="w-full rounded-xl bg-[#0B1628]/95 border border-[#168BFF]/45 pl-10 pr-20 py-2.5 text-xs text-[#C5D0E0] placeholder-[#C5D0E0]/60 focus:outline-hidden focus:border-[#168BFF] focus:ring-1 focus:ring-[#168BFF] transition-all shadow-inner"
                 />
                 <button
                   type="button"
                   onClick={() => onOpenSearch && onOpenSearch()}
-                  className="absolute right-2 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700 transition-colors"
+                  className="absolute right-2 px-2.5 py-1 rounded-lg bg-[#071A30] hover:bg-[#0f284a] text-[#C5D0E0] text-[10px] font-mono border border-[#168BFF]/30 transition-colors"
                 >
                   Ctrl K
                 </button>
               </div>
             </form>
           </div>
-
-          {/* Component 4: Four Feature Highlights Inside the Hero Banner */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-            {/* Feature 1 */}
-            <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-xs hover:border-slate-700 transition-colors">
-              <div className="flex items-center gap-2 text-red-400 font-bold text-xs">
-                <Box className="w-4 h-4" />
-                <span>CFS Container Stuffing</span>
-              </div>
-              <p className="text-[11px] text-slate-300 mt-1 leading-normal">
-                Specialized cargo stuffing, chocking, wooden lashing & fumigation.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-xs hover:border-slate-700 transition-colors">
-              <div className="flex items-center gap-2 text-blue-400 font-bold text-xs">
-                <Truck className="w-4 h-4" />
-                <span>Port & Yard Drayage</span>
-              </div>
-              <p className="text-[11px] text-slate-300 mt-1 leading-normal">
-                Direct 20FT & 40FT trailer movements with JNPT terminal connectivity.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-xs hover:border-slate-700 transition-colors">
-              <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
-                <Clock className="w-4 h-4" />
-                <span>Ground Rent Tracking</span>
-              </div>
-              <p className="text-[11px] text-slate-300 mt-1 leading-normal">
-                Automated empty & loaded calendar day calculation with zero leakage.
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-xs hover:border-slate-700 transition-colors">
-              <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
-                <ShieldCheck className="w-4 h-4" />
-                <span>100% Tax Compliant</span>
-              </div>
-              <p className="text-[11px] text-slate-300 mt-1 leading-normal">
-                Instant CGST/SGST/IGST tax calculation & digital PDF delivery.
-              </p>
-            </div>
-          </div>
         </div>
       </div>
 
       {/* ========================================================
-          2. FOUR KPI CARDS BENEATH THE BANNER (COMPONENT 7)
+          7. FOUR KPI CARDS BENEATH THE BANNER
           ======================================================== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* 1. Total Parties */}
@@ -295,7 +331,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* ========================================================
-          3. CHARTS ROW: INVOICE ANALYTICS & SHIPMENT DOUGHNUT (COMPONENTS 8 & 9)
+          8 & 9. INVOICE ANALYTICS CHART & SHIPMENT DOUGHNUT CHART
           ======================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Component 8: Invoice Analytics Chart (2 Cols) */}
@@ -303,7 +339,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div>
               <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-red-600" />
+                <BarChart3 className="w-4 h-4 text-[#FF1838]" />
                 <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                   Invoice & Turnover Analytics
                 </h2>
@@ -318,7 +354,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span>Turnover</span>
               </span>
               <span className="flex items-center gap-1.5 text-slate-600 font-medium">
-                <span className="w-3 h-3 rounded bg-red-600 inline-block" />
+                <span className="w-3 h-3 rounded bg-[#FF1838] inline-block" />
                 <span>GST Liability</span>
               </span>
             </div>
@@ -352,7 +388,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         />
                         <div
                           style={{ height: `${gstHeight}%` }}
-                          className="w-1/2 bg-red-600 hover:bg-red-700 rounded-t transition-all duration-300"
+                          className="w-1/2 bg-[#FF1838] hover:bg-[#e01430] rounded-t transition-all duration-300"
                           title={`GST: ₹${m.gst.toLocaleString('en-IN')}`}
                         />
                       </div>
@@ -381,13 +417,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
             <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
               <span className="text-[11px] text-slate-500 font-medium">Total GST Collected</span>
-              <p className="text-sm font-bold text-red-600 mt-0.5">
+              <p className="text-sm font-bold text-[#FF1838] mt-0.5">
                 ₹{(stats?.totalGstCollected || 0).toLocaleString('en-IN')}
               </p>
             </div>
             <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 col-span-2 sm:col-span-1">
               <span className="text-[11px] text-slate-500 font-medium">On-Time Settlement</span>
-              <p className="text-sm font-bold text-emerald-600 mt-0.5">
+              <p className="text-sm font-bold text-[#00D6B0] mt-0.5">
                 {stats?.outstandingAmount && stats?.thisMonthBilling
                   ? `${Math.round(
                       (1 - stats.outstandingAmount / (stats.thisMonthBilling + stats.outstandingAmount)) * 100
@@ -402,7 +438,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
-              <PieChartIcon className="w-4 h-4 text-blue-600" />
+              <PieChartIcon className="w-4 h-4 text-[#168BFF]" />
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 Shipment & Yard Status
               </h2>
@@ -413,7 +449,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* SVG Doughnut Circle */}
           <div className="flex items-center justify-center py-2 relative">
             <svg width="170" height="170" viewBox="0 0 100 100" className="transform -rotate-90">
-              {/* Background ring */}
               <circle
                 cx="50"
                 cy="50"
@@ -422,7 +457,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 stroke="#F1F5F9"
                 strokeWidth="11"
               />
-              {/* Segment arcs */}
               {(() => {
                 let accumulatedPercent = 0;
                 return doughnutSegments.map((seg, idx) => {
@@ -481,11 +515,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* ========================================================
-          4. MAIN CONTENT GRID: RECENT INVOICES, RECENT SHIPMENTS,
-             QUICK ACTIONS & CALENDAR (COMPONENTS 10, 11, 12, 13)
+          10, 11, 12, 13. RECENT INVOICES, SHIPMENTS, ACTIONS & CALENDAR
           ======================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Tables for Recent Invoices & Recent Shipments */}
+        {/* Left 2 Cols: Recent Invoices & Recent Shipments */}
         <div className="lg:col-span-2 space-y-6">
           {/* Component 11: Recent Invoices Table */}
           <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs space-y-4">
@@ -498,7 +531,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <button
                 onClick={() => onNavigateTab('invoices')}
-                className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-800 transition-colors"
+                className="flex items-center gap-1 text-xs font-bold text-[#FF1838] hover:text-[#e01430] transition-colors"
               >
                 <span>View All Invoices</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -529,7 +562,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   ) : (
                     stats?.recentInvoices?.map((inv: any) => (
                       <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="p-3 font-mono font-bold text-red-700">
+                        <td className="p-3 font-mono font-bold text-[#FF1838]">
                           <button
                             onClick={() => onViewInvoice(inv.id)}
                             className="hover:underline text-left"
@@ -575,7 +608,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                               onClick={() => onViewInvoice(inv.id)}
                               title="View Invoice"
-                              className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600 transition-colors"
+                              className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-[#FF1838] transition-colors"
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
@@ -584,14 +617,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               target="_blank"
                               rel="noreferrer"
                               title="Download PDF"
-                              className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600 transition-colors"
+                              className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-[#FF1838] transition-colors"
                             >
                               <Download className="w-3.5 h-3.5" />
                             </a>
                             <button
                               onClick={() => onPrintInvoice(inv)}
                               title="Print Invoice"
-                              className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-red-600 transition-colors"
+                              className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-[#FF1838] transition-colors"
                             >
                               <Printer className="w-3.5 h-3.5" />
                             </button>
@@ -623,7 +656,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <button
                 onClick={() => onNavigateTab('jobs')}
-                className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                className="flex items-center gap-1 text-xs font-bold text-[#168BFF] hover:text-blue-800 transition-colors"
               >
                 <span>View All Jobs</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -678,7 +711,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <td className="p-3 text-center">
                           <button
                             onClick={() => onNavigateTab('jobs')}
-                            className="p-1 rounded text-slate-500 hover:text-blue-600 hover:bg-slate-100"
+                            className="p-1 rounded text-slate-500 hover:text-[#168BFF] hover:bg-slate-100"
                             title="View Job"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
@@ -699,7 +732,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <div className="flex items-center gap-2">
-                <Compass className="w-4 h-4 text-red-600" />
+                <Compass className="w-4 h-4 text-[#FF1838]" />
                 <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Quick Actions
                 </h2>
@@ -712,7 +745,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 onClick={onOpenInvoiceWizard}
                 className="flex flex-col items-center justify-center p-3 rounded-xl bg-red-50/70 border border-red-200/80 text-red-700 hover:bg-red-100 hover:border-red-300 font-semibold transition-all group"
               >
-                <Plus className="w-5 h-5 mb-1 text-red-600 group-hover:scale-110 transition-transform" />
+                <Plus className="w-5 h-5 mb-1 text-[#FF1838] group-hover:scale-110 transition-transform" />
                 <span>Create Invoice</span>
               </button>
 
@@ -744,7 +777,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 onClick={() => onNavigateTab('payments')}
                 className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-semibold transition-all group"
               >
-                <CreditCard className="w-5 h-5 mb-1 text-emerald-600 group-hover:scale-110 transition-transform" />
+                <CreditCard className="w-5 h-5 mb-1 text-[#00D6B0] group-hover:scale-110 transition-transform" />
                 <span>Record Payment</span>
               </button>
 
@@ -752,7 +785,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 onClick={() => onNavigateTab('reports')}
                 className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900 font-semibold transition-all group"
               >
-                <BarChart3 className="w-5 h-5 mb-1 text-blue-600 group-hover:scale-110 transition-transform" />
+                <BarChart3 className="w-5 h-5 mb-1 text-[#168BFF] group-hover:scale-110 transition-transform" />
                 <span>View Reports</span>
               </button>
             </div>
@@ -762,7 +795,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
               <div className="flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-red-600" />
+                <CalendarIcon className="w-4 h-4 text-[#FF1838]" />
                 <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Operational Schedule
                 </h2>
@@ -793,7 +826,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       key={`day-${day}`}
                       className={`p-1 rounded font-medium ${
                         isToday
-                          ? 'bg-red-600 text-white font-bold shadow-xs'
+                          ? 'bg-[#FF1838] text-white font-bold shadow-xs'
                           : 'text-slate-700 hover:bg-slate-200/70 transition-colors'
                       }`}
                     >
@@ -826,13 +859,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </p>
                       {act.date && (
                         <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-mono">
-                          <Clock className="w-3 h-3 text-amber-500" />
+                          <Clock className="w-3 h-3 text-[#FF941F]" />
                           Due: {new Date(act.date).toLocaleDateString()}
                         </p>
                       )}
                     </div>
                     {act.badge && (
-                      <span className="text-[10px] font-bold font-mono text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-bold font-mono text-[#FF1838] bg-red-50 border border-red-200 px-2 py-0.5 rounded">
                         {act.badge}
                       </span>
                     )}
@@ -840,7 +873,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 ))
               ) : (
                 <div className="py-4 text-center text-xs text-slate-400">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto mb-1 opacity-70" />
+                  <CheckCircle2 className="w-5 h-5 text-[#00D6B0] mx-auto mb-1 opacity-70" />
                   All invoice payments and shipment schedules are current.
                 </div>
               )}
