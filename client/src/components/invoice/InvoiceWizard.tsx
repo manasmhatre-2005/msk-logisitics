@@ -1402,34 +1402,46 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
               </div>
 
               {/* Containers Table (9 Columns matching Image 3) */}
+              {/* Container Operational Details Table */}
               {containers.length > 0 && (
-                <div className="border-x border-b border-slate-800 overflow-x-auto">
-                  <table className="w-full text-[9px] text-center border-collapse">
-                    <thead className="bg-slate-200 font-bold border-b border-slate-800">
-                      <tr>
-                        <th className="p-1 border-r border-slate-800 w-8">SR NO</th>
-                        <th className="p-1 border-r border-slate-800 w-24">CONTAINER NO</th>
-                        <th className="p-1 border-r border-slate-800 w-16">SIZE</th>
-                        <th className="p-1 border-r border-slate-800 w-14">TYPE</th>
-                        <th className="p-1 border-r border-slate-800">EMPTY GROUND (DAYS)</th>
-                        <th className="p-1 border-r border-slate-800">LOADED GROUND DAYS</th>
-                        <th className="p-1 border-r border-slate-800">H & T CHARGES</th>
-                        <th className="p-1 border-r border-slate-800">LOGISTICS CHARGES</th>
-                        <th className="p-1">EMPTY TRANSPORTATION</th>
+                <div className="border-x border-b border-slate-800 bg-white">
+                  <table className="w-full text-[9px] text-center border-collapse table-fixed">
+                    <colgroup>
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '16%' }} />
+                      <col style={{ width: '8%' }} />
+                      <col style={{ width: '7%' }} />
+                      <col style={{ width: '12%' }} />
+                      <col style={{ width: '12%' }} />
+                      <col style={{ width: '13%' }} />
+                      <col style={{ width: '13%' }} />
+                      <col style={{ width: '14%' }} />
+                    </colgroup>
+                    <thead className="bg-slate-200 text-slate-900 font-bold border-b border-slate-800 text-[8px] uppercase tracking-tight leading-tight">
+                      <tr className="divide-x divide-slate-800">
+                        <th className="py-1.5 px-0.5">SR NO</th>
+                        <th className="py-1.5 px-1">CONTAINER NO</th>
+                        <th className="py-1.5 px-0.5">SIZE</th>
+                        <th className="py-1.5 px-0.5">TYPE</th>
+                        <th className="py-1.5 px-0.5 whitespace-normal">EMPTY GROUND<br/>(DAYS)</th>
+                        <th className="py-1.5 px-0.5 whitespace-normal">LOADED GROUND<br/>DAYS</th>
+                        <th className="py-1.5 px-1 whitespace-normal">H &amp; T<br/>CHARGES</th>
+                        <th className="py-1.5 px-1 whitespace-normal">LOGISTICS<br/>CHARGES</th>
+                        <th className="py-1.5 px-1 whitespace-normal">EMPTY<br/>TRANSPORTATION</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-300">
                       {containers.map((c, i) => (
-                        <tr key={i}>
-                          <td className="p-1 border-r border-slate-800">{i + 1}</td>
-                          <td className="p-1 border-r border-slate-800 font-mono font-bold">{c.containerNumber}</td>
-                          <td className="p-1 border-r border-slate-800">{c.size}</td>
-                          <td className="p-1 border-r border-slate-800">{c.type}</td>
-                          <td className="p-1 border-r border-slate-800">{c.emptyGroundDays || 0}</td>
-                          <td className="p-1 border-r border-slate-800">{c.loadedGroundDays || 0}</td>
-                          <td className="p-1 border-r border-slate-800 font-mono">{c.htCharges ? `${getCurrencySymbol(currency)} ${formatCurrency(c.htCharges, currency)}` : '-'}</td>
-                          <td className="p-1 border-r border-slate-800 font-mono">{c.logisticsCharges ? `${getCurrencySymbol(currency)} ${formatCurrency(c.logisticsCharges, currency)}` : '-'}</td>
-                          <td className="p-1 font-mono">{c.emptyTransportCharges ? `${getCurrencySymbol(currency)} ${formatCurrency(c.emptyTransportCharges, currency)}` : '-'}</td>
+                        <tr key={i} className="hover:bg-slate-50 divide-x divide-slate-800 text-[9px]">
+                          <td className="py-1 px-0.5 font-mono text-center">{i + 1}</td>
+                          <td className="py-1 px-1 font-mono font-bold text-slate-950 truncate text-center">{c.containerNumber}</td>
+                          <td className="py-1 px-0.5 text-center">{c.size}</td>
+                          <td className="py-1 px-0.5 text-center">{c.type}</td>
+                          <td className="py-1 px-0.5 font-mono text-center">{c.emptyGroundDays || 0}</td>
+                          <td className="py-1 px-0.5 font-mono text-center">{c.loadedGroundDays || 0}</td>
+                          <td className="py-1 px-1.5 text-right font-mono">{c.htCharges ? `${getCurrencySymbol(currency)} ${formatCurrency(c.htCharges, currency)}` : '-'}</td>
+                          <td className="py-1 px-1.5 text-right font-mono">{c.logisticsCharges ? `${getCurrencySymbol(currency)} ${formatCurrency(c.logisticsCharges, currency)}` : '-'}</td>
+                          <td className="py-1 px-1.5 text-right font-mono">{c.emptyTransportCharges ? `${getCurrencySymbol(currency)} ${formatCurrency(c.emptyTransportCharges, currency)}` : '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1437,32 +1449,46 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
                 </div>
               )}
 
+              {/* Section Divider Bar between Container Operational Details and Line Item Charges */}
+              {containers.length > 0 && (
+                <div className="h-2 bg-slate-100 border-x border-b border-slate-800 print:h-1.5" />
+              )}
+
               {/* Line Items Table (7 Columns matching Image 3) */}
-              <div className="border-x border-b border-slate-800 overflow-x-auto">
-                <table className="w-full text-left border-collapse text-[10px]">
-                  <thead>
-                    <tr className="bg-slate-200 text-slate-900 font-bold border-b border-slate-800">
-                      <th className="p-1 border-r border-slate-800 w-8 text-center">Sr</th>
-                      <th className="p-1 border-r border-slate-800">Description</th>
-                      <th className="p-1 border-r border-slate-800 text-center w-20">HSN/SAC</th>
-                      <th className="p-1 border-r border-slate-800 text-center w-10">Qty</th>
-                      <th className="p-1 border-r border-slate-800 text-right w-24">Rate ({getCurrencySymbol(currency)})</th>
-                      <th className="p-1 border-r border-slate-800 text-right w-24">Amount ({getCurrencySymbol(currency)})</th>
-                      <th className="p-1 border-r border-slate-800 text-right w-24">Taxable ({getCurrencySymbol(currency)})</th>
+              <div className="border-x border-b border-slate-800 bg-white">
+                <table className="w-full text-[9.5px] border-collapse table-fixed">
+                  <colgroup>
+                    <col style={{ width: '5%' }} />
+                    <col style={{ width: '43%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '12%' }} />
+                    <col style={{ width: '12%' }} />
+                  </colgroup>
+                  <thead className="bg-slate-200 text-slate-900 font-bold border-b border-slate-800 text-center text-[9px] uppercase tracking-tight leading-tight">
+                    <tr className="divide-x divide-slate-800">
+                      <th className="py-1.5 px-0.5">Sr</th>
+                      <th className="py-1.5 px-2 text-left">Description</th>
+                      <th className="py-1.5 px-1">HSN/SAC</th>
+                      <th className="py-1.5 px-0.5">Qty</th>
+                      <th className="py-1.5 px-1.5 text-right">Rate ({getCurrencySymbol(currency)})</th>
+                      <th className="py-1.5 px-1.5 text-right">Amount ({getCurrencySymbol(currency)})</th>
+                      <th className="py-1.5 px-1.5 text-right">Taxable ({getCurrencySymbol(currency)})</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-300">
                     {lineItems.map((item, i) => {
                       const taxable = Math.max(0, item.quantity * item.rate - (item.discount || 0));
                       return (
-                        <tr key={i} className="border-b border-slate-200">
-                          <td className="p-1 border-r border-slate-800 text-center">{i + 1}</td>
-                          <td className="p-1 border-r border-slate-800 font-bold text-slate-900">{item.description}</td>
-                          <td className="p-1 border-r border-slate-800 text-center font-mono">{item.hsnSacCode}</td>
-                          <td className="p-1 border-r border-slate-800 text-center">{item.quantity}</td>
-                          <td className="p-1 border-r border-slate-800 text-right font-mono">{formatCurrency(item.rate, currency)}</td>
-                          <td className="p-1 border-r border-slate-800 text-right font-mono">{formatCurrency(item.quantity * item.rate, currency)}</td>
-                          <td className="p-1 border-r border-slate-800 text-right font-mono font-bold text-slate-950">{formatCurrency(taxable, currency)}</td>
+                        <tr key={i} className="hover:bg-slate-50 divide-x divide-slate-800 text-[9.5px]">
+                          <td className="py-1.5 px-0.5 text-center font-mono">{i + 1}</td>
+                          <td className="py-1.5 px-2 text-left font-bold text-slate-900 leading-snug break-words">{item.description}</td>
+                          <td className="py-1.5 px-1 text-center font-mono">{item.hsnSacCode}</td>
+                          <td className="py-1.5 px-0.5 text-center font-mono">{item.quantity}</td>
+                          <td className="py-1.5 px-1.5 text-right font-mono">{formatCurrency(item.rate, currency)}</td>
+                          <td className="py-1.5 px-1.5 text-right font-mono">{formatCurrency(item.quantity * item.rate, currency)}</td>
+                          <td className="py-1.5 px-1.5 text-right font-mono font-bold text-slate-950">{formatCurrency(taxable, currency)}</td>
                         </tr>
                       );
                     })}

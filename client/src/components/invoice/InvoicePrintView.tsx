@@ -325,65 +325,96 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
         </div>
 
         {/* 6. Container Details Table (Exact 9 Columns from Image 3) */}
-        <div className="border-x border-b border-slate-800 overflow-x-auto">
-          <table className="w-full text-[9px] text-center border-collapse">
-            <thead className="bg-slate-200 font-bold border-b border-slate-800">
-              <tr>
-                <th className="p-1 border-r border-slate-800 w-8">SR NO</th>
-                <th className="p-1 border-r border-slate-800 w-24">CONTAINER NO</th>
-                <th className="p-1 border-r border-slate-800 w-16">SIZE</th>
-                <th className="p-1 border-r border-slate-800 w-14">TYPE</th>
-                <th className="p-1 border-r border-slate-800">EMPTY GROUND (DAYS)</th>
-                <th className="p-1 border-r border-slate-800">LOADED GROUND DAYS</th>
-                <th className="p-1 border-r border-slate-800">H & T CHARGES</th>
-                <th className="p-1 border-r border-slate-800">LOGISTICS CHARGES</th>
-                <th className="p-1">EMPTY TRANSPORTATION</th>
+        <div className="border-x border-b border-slate-800 bg-white">
+          <table className="w-full text-[9px] text-center border-collapse table-fixed">
+            <colgroup>
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '14%' }} />
+            </colgroup>
+            <thead className="bg-slate-200 text-slate-900 font-bold border-b border-slate-800 text-[8px] uppercase tracking-tight leading-tight">
+              <tr className="divide-x divide-slate-800">
+                <th className="py-1.5 px-0.5">SR NO</th>
+                <th className="py-1.5 px-1">CONTAINER NO</th>
+                <th className="py-1.5 px-0.5">SIZE</th>
+                <th className="py-1.5 px-0.5">TYPE</th>
+                <th className="py-1.5 px-0.5 whitespace-normal">EMPTY GROUND<br/>(DAYS)</th>
+                <th className="py-1.5 px-0.5 whitespace-normal">LOADED GROUND<br/>DAYS</th>
+                <th className="py-1.5 px-1 whitespace-normal">H &amp; T<br/>CHARGES</th>
+                <th className="py-1.5 px-1 whitespace-normal">LOGISTICS<br/>CHARGES</th>
+                <th className="py-1.5 px-1 whitespace-normal">EMPTY<br/>TRANSPORTATION</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-300">
               {invoice.containers && invoice.containers.length > 0 ? (
                 invoice.containers.map((c: any, i: number) => (
-                  <tr key={i} className="hover:bg-slate-50">
-                    <td className="p-1 border-r border-slate-800">{i + 1}</td>
-                    <td className="p-1 border-r border-slate-800 font-mono font-bold text-slate-950">{c.containerNumber}</td>
-                    <td className="p-1 border-r border-slate-800">{c.size || '40 FT HC'}</td>
-                    <td className="p-1 border-r border-slate-800">{c.type || 'DRY'}</td>
-                    <td className="p-1 border-r border-slate-800">{c.emptyGroundDays ?? '-'}</td>
-                    <td className="p-1 border-r border-slate-800">{c.loadedGroundDays ?? '-'}</td>
-                    <td className="p-1 border-r border-slate-800 text-right font-mono">
+                  <tr key={i} className="hover:bg-slate-50 divide-x divide-slate-800 text-[9px]">
+                    <td className="py-1 px-0.5 font-mono text-center">{i + 1}</td>
+                    <td className="py-1 px-1 font-mono font-bold text-slate-950 truncate text-center" title={c.containerNumber}>
+                      {c.containerNumber}
+                    </td>
+                    <td className="py-1 px-0.5 text-center">{c.size || '40 FT HC'}</td>
+                    <td className="py-1 px-0.5 text-center">{c.type || 'DRY'}</td>
+                    <td className="py-1 px-0.5 font-mono text-center">{c.emptyGroundDays ?? '-'}</td>
+                    <td className="py-1 px-0.5 font-mono text-center">{c.loadedGroundDays ?? '-'}</td>
+                    <td className="py-1 px-1.5 text-right font-mono">
                       {c.htCharges > 0 ? formatCurr(c.htCharges) : '-'}
                     </td>
-                    <td className="p-1 border-r border-slate-800 text-right font-mono">
+                    <td className="py-1 px-1.5 text-right font-mono">
                       {c.logisticsCharges > 0 ? formatCurr(c.logisticsCharges) : '-'}
                     </td>
-                    <td className="p-1 text-right font-mono">
+                    <td className="py-1 px-1.5 text-right font-mono">
                       {c.emptyTransportCharges > 0 ? formatCurr(c.emptyTransportCharges) : '-'}
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={9} className="p-2 text-center text-slate-500 italic">
-                    1 &nbsp;|&nbsp; TGBU3802319 &nbsp;|&nbsp; 40 FT HC &nbsp;|&nbsp; DRY &nbsp;|&nbsp; 3 &nbsp;|&nbsp; 2 &nbsp;|&nbsp; - &nbsp;|&nbsp; - &nbsp;|&nbsp; -
-                  </td>
+                <tr className="divide-x divide-slate-800 text-[9px]">
+                  <td className="py-1 px-0.5 font-mono text-center">1</td>
+                  <td className="py-1 px-1 font-mono font-bold text-slate-950 text-center">TGBU3802319</td>
+                  <td className="py-1 px-0.5 text-center">40 FT HC</td>
+                  <td className="py-1 px-0.5 text-center">DRY</td>
+                  <td className="py-1 px-0.5 font-mono text-center">3</td>
+                  <td className="py-1 px-0.5 font-mono text-center">2</td>
+                  <td className="py-1 px-1.5 text-right font-mono">-</td>
+                  <td className="py-1 px-1.5 text-right font-mono">-</td>
+                  <td className="py-1 px-1.5 text-right font-mono">-</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
 
+        {/* Section Divider Bar between Container Operational Details and Line Item Charges */}
+        <div className="h-2 bg-slate-100 border-x border-b border-slate-800 print:h-1.5" />
+
         {/* 7. Charges & Itemized Table (Exact 7 Columns from Image 3) */}
-        <div className="border-x border-b border-slate-800 overflow-x-auto">
-          <table className="w-full text-[10px] border-collapse">
-            <thead className="bg-slate-200 font-bold border-b border-slate-800 text-center">
-              <tr>
-                <th className="p-1 border-r border-slate-800 w-8">Sr</th>
-                <th className="p-1 border-r border-slate-800 text-left">Description</th>
-                <th className="p-1 border-r border-slate-800 w-20">HSN/SAC</th>
-                <th className="p-1 border-r border-slate-800 w-10">Qty</th>
-                <th className="p-1 border-r border-slate-800 text-right w-24">Rate ({currSymbol})</th>
-                <th className="p-1 border-r border-slate-800 text-right w-24">Amount ({currSymbol})</th>
-                <th className="p-1 text-right w-24">Taxable ({currSymbol})</th>
+        <div className="border-x border-b border-slate-800 bg-white">
+          <table className="w-full text-[9.5px] border-collapse table-fixed">
+            <colgroup>
+              <col style={{ width: '5%' }} />
+              <col style={{ width: '43%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+            </colgroup>
+            <thead className="bg-slate-200 text-slate-900 font-bold border-b border-slate-800 text-center text-[9px] uppercase tracking-tight leading-tight">
+              <tr className="divide-x divide-slate-800">
+                <th className="py-1.5 px-0.5">Sr</th>
+                <th className="py-1.5 px-2 text-left">Description</th>
+                <th className="py-1.5 px-1">HSN/SAC</th>
+                <th className="py-1.5 px-0.5">Qty</th>
+                <th className="py-1.5 px-1.5 text-right">Rate ({currSymbol})</th>
+                <th className="py-1.5 px-1.5 text-right">Amount ({currSymbol})</th>
+                <th className="py-1.5 px-1.5 text-right">Taxable ({currSymbol})</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-300">
@@ -394,14 +425,16 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
                 const lineTaxable = item.taxableValue !== undefined ? Number(item.taxableValue) : Math.max(0, lineAmt - Number(item.discount || 0));
 
                 return (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    <td className="p-1 border-r border-slate-800 text-center">{item.srNo || idx + 1}</td>
-                    <td className="p-1 border-r border-slate-800 font-bold text-slate-900">{item.description}</td>
-                    <td className="p-1 border-r border-slate-800 text-center font-mono">{item.hsnSacCode}</td>
-                    <td className="p-1 border-r border-slate-800 text-center">{lineQty}</td>
-                    <td className="p-1 border-r border-slate-800 text-right font-mono">{formatCurr(lineRate)}</td>
-                    <td className="p-1 border-r border-slate-800 text-right font-mono">{formatCurr(lineAmt)}</td>
-                    <td className="p-1 text-right font-mono font-bold text-slate-950">
+                  <tr key={idx} className="hover:bg-slate-50 divide-x divide-slate-800 text-[9.5px]">
+                    <td className="py-1.5 px-0.5 text-center font-mono">{item.srNo || idx + 1}</td>
+                    <td className="py-1.5 px-2 text-left font-bold text-slate-900 leading-snug break-words">
+                      {item.description}
+                    </td>
+                    <td className="py-1.5 px-1 text-center font-mono">{item.hsnSacCode || '-'}</td>
+                    <td className="py-1.5 px-0.5 text-center font-mono">{lineQty}</td>
+                    <td className="py-1.5 px-1.5 text-right font-mono">{formatCurr(lineRate)}</td>
+                    <td className="py-1.5 px-1.5 text-right font-mono">{formatCurr(lineAmt)}</td>
+                    <td className="py-1.5 px-1.5 text-right font-mono font-bold text-slate-950">
                       {formatCurr(lineTaxable)}
                     </td>
                   </tr>

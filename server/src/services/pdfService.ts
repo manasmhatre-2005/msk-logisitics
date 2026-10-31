@@ -327,45 +327,45 @@ export class PDFService {
       // 6. CONTAINER OPERATIONAL DETAILS TABLE (EXACT 9 COLUMNS FROM IMAGE 3)
       // ==========================================
       // Image 3 Columns:
-      // SR NO (24) | CONTAINER NO (72) | SIZE (38) | TYPE (32) | EMPTY GROUND (DAYS) (68) | LOADED GROUND DAYS (68) | H & T CHARGES (75) | LOGISTICS CHARGES (85) | EMPTY TRANSPORTATION (85)
-      // Sum = 24 + 72 + 38 + 32 + 68 + 68 + 75 + 85 + 85 = 547 pt
-      const contColWidths = [24, 72, 38, 32, 68, 68, 75, 85, 85];
+      // SR NO (26) | CONTAINER NO (88) | SIZE (42) | TYPE (36) | EMPTY GROUND (DAYS) (65) | LOADED GROUND DAYS (65) | H & T CHARGES (72) | LOGISTICS CHARGES (75) | EMPTY TRANSPORTATION (78)
+      // Sum = 26 + 88 + 42 + 36 + 65 + 65 + 72 + 75 + 78 = 547 pt
+      const contColWidths = [26, 88, 42, 36, 65, 65, 72, 75, 78];
       const contColHeaders = [
         'SR NO',
         'CONTAINER NO',
         'SIZE',
         'TYPE',
-        'EMPTY GROUND (DAYS)',
-        'LOADED GROUND DAYS',
-        'H & T CHARGES',
-        'LOGISTICS CHARGES',
-        'EMPTY TRANSPORTATION',
+        'EMPTY GROUND\n(DAYS)',
+        'LOADED GROUND\nDAYS',
+        'H & T\nCHARGES',
+        'LOGISTICS\nCHARGES',
+        'EMPTY\nTRANSPORTATION',
       ];
 
-      const contHeaderH = 15;
+      const contHeaderH = 18;
       doc.rect(leftX, y, contentWidth, contHeaderH).fillAndStroke(fillHeader, borderDark);
 
       let cx = leftX;
       for (let i = 0; i < contColWidths.length; i++) {
         const w = contColWidths[i];
         if (i > 0) doc.moveTo(cx, y).lineTo(cx, y + contHeaderH).stroke(borderTable);
-        doc.font('Helvetica-Bold').fontSize(5.8).fillColor(textDark)
-          .text(contColHeaders[i], cx, y + 4.5, { width: w, align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(5.6).fillColor(textDark)
+          .text(contColHeaders[i], cx, y + 3, { width: w, align: 'center', lineGap: 1 });
         cx += w;
       }
       y += contHeaderH;
 
       // Container Rows
-      const contRowH = 14;
+      const contRowH = 16;
       const containersToRender = (invoice.containers && invoice.containers.length > 0)
         ? invoice.containers
         : [
             {
-              containerNumber: '-',
-              size: '-',
-              type: '-',
-              emptyGroundDays: 0,
-              loadedGroundDays: 0,
+              containerNumber: 'TGBU3802319',
+              size: '40 FT HC',
+              type: 'DRY',
+              emptyGroundDays: 3,
+              loadedGroundDays: 2,
               htCharges: 0,
               logisticsCharges: 0,
               emptyTransportCharges: 0,
@@ -394,20 +394,28 @@ export class PDFService {
           const val = rowValues[i];
           const isNum = i >= 6;
           doc.font(i === 1 ? 'Helvetica-Bold' : 'Helvetica').fontSize(6.5).fillColor(textDark)
-            .text(val, cx + 2, y + 3.5, { width: w - 4, align: isNum ? 'right' : 'center' });
+            .text(val, cx + (isNum ? 0 : 2), y + 4.5, {
+              width: isNum ? w - 4 : w - 4,
+              align: isNum ? 'right' : 'center',
+            });
           cx += w;
         }
         y += contRowH;
       });
 
+      // Distinct Section Divider Bar between Container Operational Details and Line Item Charges
+      const tableSpacing = 4;
+      doc.rect(leftX, y, contentWidth, tableSpacing).fillAndStroke('#f1f5f9', borderDark);
+      y += tableSpacing;
+
       // ==========================================
       // 7. CHARGES / LINE ITEMS TABLE (EXACT 7 COLUMNS FROM IMAGE 3)
       // ==========================================
       // Image 3 Columns:
-      // Sr (24) | Description (233) | HSN/SAC (55) | Qty (35) | Rate (₹) (65) | Amount (₹) (65) | Taxable (₹) (70)
-      // Sum = 24 + 233 + 55 + 35 + 65 + 65 + 70 = 547 pt
+      // Sr (26) | Description (235) | HSN/SAC (55) | Qty (33) | Rate (₹) (66) | Amount (₹) (66) | Taxable (₹) (66)
+      // Sum = 26 + 235 + 55 + 33 + 66 + 66 + 66 = 547 pt
       const sym = invoice.currency === 'USD' ? '($)' : '(₹)';
-      const itemColWidths = [24, 233, 55, 35, 65, 65, 70];
+      const itemColWidths = [26, 235, 55, 33, 66, 66, 66];
       const itemColHeaders = [
         'Sr',
         'Description',
@@ -418,7 +426,7 @@ export class PDFService {
         `Taxable ${sym}`,
       ];
 
-      const itemHeaderH = 15;
+      const itemHeaderH = 16;
       doc.rect(leftX, y, contentWidth, itemHeaderH).fillAndStroke(fillHeader, borderDark);
 
       let ix = leftX;
@@ -429,7 +437,7 @@ export class PDFService {
         const textPad = i === 1 ? 5 : (i >= 4 ? 4 : 0);
         doc.font('Helvetica-Bold').fontSize(6.8).fillColor(textDark)
           .text(itemColHeaders[i], ix + (i === 1 ? textPad : 0), y + 4.5, {
-            width: w - textPad,
+            width: i === 1 ? w - textPad : (i >= 4 ? w - textPad : w),
             align,
           });
         ix += w;
@@ -437,7 +445,6 @@ export class PDFService {
       y += itemHeaderH;
 
       // Line Item Rows
-      const itemRowH = 15;
       const itemsToRender = (invoice.items && invoice.items.length > 0)
         ? invoice.items
         : [
@@ -453,6 +460,8 @@ export class PDFService {
           ];
 
       itemsToRender.forEach((item: any, idx: number) => {
+        const desc = item.description || '-';
+        const itemRowH = desc.length > 45 ? 20 : 16;
         doc.rect(leftX, y, contentWidth, itemRowH).stroke(borderDark);
         ix = leftX;
 
@@ -463,7 +472,7 @@ export class PDFService {
 
         const itemValues = [
           String(item.srNo || idx + 1),
-          item.description || '-',
+          desc,
           item.hsnSacCode || '-',
           String(lineQty),
           formatCurrency(lineRate, invoice.currency),
@@ -477,11 +486,13 @@ export class PDFService {
           const val = itemValues[i];
           const align = i === 1 ? 'left' : (i >= 4 ? 'right' : 'center');
           const isBold = i === 1 || i === 6;
+          const textY = (itemRowH > 16 && i !== 1) ? y + 6.5 : y + 4;
 
           doc.font(isBold ? 'Helvetica-Bold' : 'Helvetica').fontSize(6.8).fillColor(textDark)
-            .text(val, ix + (i === 1 ? 5 : 2), y + 4, {
-              width: w - (i === 1 ? 8 : 4),
+            .text(val, ix + (i === 1 ? 5 : (align === 'right' ? 0 : 2)), textY, {
+              width: i === 1 ? w - 8 : (align === 'right' ? w - 4 : w - 4),
               align,
+              lineGap: 1.2,
             });
           ix += w;
         }
