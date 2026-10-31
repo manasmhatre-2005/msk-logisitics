@@ -266,6 +266,18 @@ model Invoice {
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
+  // Credit Note & Multi-Bill Type Additions
+  billType               String?            @default("STANDARD") // STANDARD, CREDIT_NOTE, EMPTY_CONTAINER, HT_BILL, FORWARDING
+  originalInvoiceId      String?
+  originalInvoiceNumber  String?
+  originalInvoiceDate    DateTime?
+  reasonForCredit        String?
+  verificationToken      String?            @unique
+  vesselVoyage           String?
+  mblHbl                 String?
+  portOfLoading          String?
+  portOfDischarge        String?
+
   containers     InvoiceContainer[]
   items          InvoiceItem[]
   payments       Payment[]
@@ -302,6 +314,8 @@ model InvoiceItem {
   chargeMasterId String?
   chargeMaster   ChargeMaster? @relation(fields: [chargeMasterId], references: [id])
   srNo           Int
+  containerNumber String?
+  containerSize   String?
   description    String
   hsnSacCode     String
   quantity       Float         @default(1)

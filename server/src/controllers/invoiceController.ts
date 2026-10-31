@@ -1,4 +1,5 @@
-import { Response } from 'express';
+import { Response, Request } from 'express';
+import crypto from 'crypto';
 import prisma from '../prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { logAudit } from '../middleware/audit.js';
@@ -9,11 +10,18 @@ import { EmailService } from '../services/emailService.js';
 export class InvoiceController {
   static async getAll(req: AuthRequest, res: Response) {
     try {
-      const { status, partyId, dateFrom, dateTo, search } = req.query;
+      const { status, partyId, dateFrom, dateTo, search, billType } = req.query;
       const where: any = {};
 
       if (status && status !== 'ALL') {
-        where.status = String(status);
+        if (status === 'CREDIT_NOTE') {
+          where.billType = 'CREDIT_NOTE';
+        } else {
+          where.status = String(status);
+        }
+      }
+      if (billType) {
+        where.billType = String(billType);
       }
       if (partyId) {
         where.partyId = String(partyId);
@@ -28,6 +36,7 @@ export class InvoiceController {
         const query = String(search).trim();
         where.OR = [
           { invoiceNumber: { contains: query } },
+          { originalInvoiceNumber: { contains: query } },
           { billToName: { contains: query } },
           { billToGstin: { contains: query } },
           { sbNumbers: { contains: query } },
@@ -118,6 +127,16 @@ export class InvoiceController {
     try {
       const {
         invoiceNumber: customInvoiceNumber,
+        billType = 'STANDARD',
+        originalInvoiceId,
+        originalInvoiceNumber,
+        originalInvoiceDate,
+        reasonForCredit,
+        verificationToken,
+        vesselVoyage,
+        mblHbl,
+        portOfLoading,
+        portOfDischarge,
         invoiceDate,
         dueDate,
         partyId,
@@ -152,21 +171,32 @@ export class InvoiceController {
 
       const settings = await prisma.companySettings.findUnique({ where: { id: 'default' } });
 
-      // Generate invoice number if not provided: MSK/HT000/OCT26 format
+      // Generate invoice / credit note number if not provided
       let invoiceNumber = customInvoiceNumber;
       if (!invoiceNumber) {
         const invDate = invoiceDate ? new Date(invoiceDate) : new Date();
-        const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-        const monthStr = months[invDate.getMonth()];
-        const yearStr = String(invDate.getFullYear()).slice(-2);
-        const prefix = (settings?.invoicePrefix || 'MSK/HT').trim().replace(/\/+$/, '');
-        const nextSeq = settings?.nextInvoiceSeq || 1;
-        invoiceNumber = `${prefix}${String(nextSeq).padStart(3, '0')}/${monthStr}${yearStr}`;
-        await prisma.companySettings.update({
-          where: { id: 'default' },
-          data: { nextInvoiceSeq: nextSeq + 1 },
-        });
+        if (billType === 'CREDIT_NOTE') {
+          const year = invDate.getFullYear();
+          const nextYear = String(year + 1).slice(-2);
+          const finYear = `${year}-${nextYear}`;
+          const cnCount = await prisma.invoice.count({ where: { billType: 'CREDIT_NOTE' } });
+          invoiceNumber = `MSK/CN/${finYear}/${String(cnCount + 1).padStart(3, '0')}`;
+        } else {
+          const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+          const monthStr = months[invDate.getMonth()];
+          const yearStr = String(invDate.getFullYear()).slice(-2);
+          const prefix = (settings?.invoicePrefix || 'MSK/HT').trim().replace(/\/+$/, '');
+          const nextSeq = settings?.nextInvoiceSeq || 1;
+          invoiceNumber = `${prefix}${String(nextSeq).padStart(3, '0')}/${monthStr}${yearStr}`;
+          await prisma.companySettings.update({
+            where: { id: 'default' },
+            data: { nextInvoiceSeq: nextSeq + 1 },
+          });
+        }
       }
+
+      // Generate persistent secure verification token for QR code
+      const token = verificationToken || crypto.randomBytes(16).toString('hex');
 
       // Calculate totals and taxes with custom GST options if specified
       const taxCalc = await CalculationService.calculateInvoiceTaxes(
@@ -194,6 +224,16 @@ export class InvoiceController {
       const invoice = await prisma.invoice.create({
         data: {
           invoiceNumber,
+          billType,
+          originalInvoiceId: originalInvoiceId || null,
+          originalInvoiceNumber: originalInvoiceNumber || null,
+          originalInvoiceDate: originalInvoiceDate ? new Date(originalInvoiceDate) : null,
+          reasonForCredit: reasonForCredit || null,
+          verificationToken: token,
+          vesselVoyage: vesselVoyage || null,
+          mblHbl: mblHbl || null,
+          portOfLoading: portOfLoading || null,
+          portOfDischarge: portOfDischarge || null,
           invoiceDate: invoiceDate ? new Date(invoiceDate) : new Date(),
           dueDate: dueDate ? new Date(dueDate) : null,
           partyId,
@@ -276,6 +316,8 @@ export class InvoiceController {
             data: {
               invoiceId: invoice.id,
               containerId: item.containerId || null,
+              containerNumber: item.containerNumber || null,
+              containerSize: item.containerSize || null,
               chargeMasterId: item.chargeMasterId || null,
               srNo: sr++,
               description: item.description,
@@ -298,12 +340,29 @@ export class InvoiceController {
         }
       }
 
+      // If this is a credit note linked to an original invoice, adjust original invoice balance
+      if (originalInvoiceId) {
+        try {
+          const origInv = await prisma.invoice.findUnique({ where: { id: originalInvoiceId } });
+          if (origInv) {
+            const adjustedBalance = Math.max(0, origInv.balanceAmount - taxCalc.grandTotal);
+            await prisma.invoice.update({
+              where: { id: originalInvoiceId },
+              data: { balanceAmount: adjustedBalance },
+            });
+          }
+        } catch (origErr) {
+          console.warn('Original invoice balance adjustment warning:', origErr);
+        }
+      }
+
       const sym = invoice.currency === 'USD' ? '$' : '₹';
+      const docLabel = invoice.billType === 'CREDIT_NOTE' ? 'credit note' : 'invoice';
       await logAudit({
         action: 'CREATE',
         entityType: 'INVOICE',
         entityId: invoice.id,
-        details: `Created invoice ${invoice.invoiceNumber} (${invoice.status}) for ${sym}${invoice.grandTotal}`,
+        details: `Created ${docLabel} ${invoice.invoiceNumber} (${invoice.status}) for ${sym}${invoice.grandTotal}`,
         req,
       });
 
@@ -622,6 +681,82 @@ export class InvoiceController {
       return res.json(result);
     } catch (err: any) {
       return res.status(400).json({ error: err.message || 'Failed to dispatch invoice email' });
+    }
+  }
+
+  static async verifyCreditNote(req: Request, res: Response) {
+    try {
+      const { token } = req.params;
+      if (!token) {
+        return res.status(400).json({ verified: false, error: 'Verification token is required.' });
+      }
+
+      const invoice = await prisma.invoice.findFirst({
+        where: { verificationToken: token },
+        include: {
+          party: true,
+          items: {
+            orderBy: { srNo: 'asc' },
+          },
+          containers: true,
+        },
+      });
+
+      if (!invoice) {
+        return res.status(404).json({
+          verified: false,
+          error: 'Credit Note record not found or verification token is invalid.',
+        });
+      }
+
+      const settings = await prisma.companySettings.findUnique({ where: { id: 'default' } });
+
+      return res.json({
+        verified: true,
+        id: invoice.id,
+        creditNoteNumber: invoice.invoiceNumber,
+        issueDate: invoice.invoiceDate,
+        originalInvoiceNumber: invoice.originalInvoiceNumber,
+        originalInvoiceDate: invoice.originalInvoiceDate,
+        partyName: invoice.billToName,
+        partyGstin: invoice.billToGstin,
+        partyAddress: invoice.billToAddress,
+        partyState: invoice.billToState,
+        partyStateCode: invoice.billToStateCode,
+        vesselVoyage: invoice.vesselVoyage,
+        mblHbl: invoice.mblHbl,
+        portOfLoading: invoice.portOfLoading,
+        portOfDischarge: invoice.portOfDischarge,
+        reasonForCredit: invoice.reasonForCredit,
+        taxableAmount: invoice.taxableAmount,
+        cgstRate: invoice.cgstRate,
+        cgstAmount: invoice.cgstAmount,
+        sgstRate: invoice.sgstRate,
+        sgstAmount: invoice.sgstAmount,
+        igstRate: invoice.igstRate,
+        igstAmount: invoice.igstAmount,
+        totalGst: invoice.totalGst,
+        totalCreditValue: invoice.grandTotal,
+        grandTotal: invoice.grandTotal,
+        amountInWords: invoice.amountInWords,
+        currency: invoice.currency,
+        status: invoice.status,
+        company: {
+          name: settings?.companyName || 'MSK LOGISTIC SOLUTION',
+          gstin: settings?.gstin || '27AXWPK4562G1ZX',
+          city: settings?.city || 'Navi Mumbai',
+        },
+        companyName: settings?.companyName || 'MSK LOGISTIC SOLUTION',
+        companyGstin: settings?.gstin || '27AXWPK4562G1ZX',
+        companyPan: settings?.pan || 'AXWPK4562G',
+        companyAddress: settings?.address || 'JNPT Township Colony, Sector - 3, Building No. B/48, Office No. 3, Navi Mumbai - 400702',
+        companyPhone: settings?.phone || '+91 8104592823',
+        companyEmail: settings?.email || 'accounts@msklogisticsolution.com',
+        verificationTimestamp: new Date().toISOString(),
+        verifiedAt: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      return res.status(500).json({ verified: false, error: err.message });
     }
   }
 }

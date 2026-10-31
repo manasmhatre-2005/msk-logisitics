@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import QRCode from 'qrcode';
 import prisma from '../prisma.js';
 import fs from 'fs';
 import path from 'path';
@@ -77,6 +78,10 @@ export class PDFService {
     }
 
     const settings = providedSettings || (await prisma.companySettings.findUnique({ where: { id: 'default' } }));
+
+    if (invoice.billType === 'CREDIT_NOTE') {
+      return PDFService.generateCreditNotePDF(invoice, settings);
+    }
 
     // Extract templateId from options, invoice, notes tag, or default
     let templateId: BillFormatId = 'format-1';
@@ -636,6 +641,494 @@ export class PDFService {
         });
 
       // Finalize PDF Document
+      doc.end();
+    });
+  }
+
+  /**
+   * Generate A4 Credit Note PDF buffer with QR verification code
+   * Exactly matching the Credit Note layout format
+   */
+  static async generateCreditNotePDF(invoice: any, settings: any): Promise<Buffer> {
+    const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
+    const verifyUrl = invoice.verificationToken
+      ? `${baseUrl}/verify/cn/${invoice.verificationToken}`
+      : `${baseUrl}/invoices`;
+
+    let qrBuffer: Buffer | null = null;
+    try {
+      qrBuffer = await QRCode.toBuffer(verifyUrl, {
+        width: 120,
+        margin: 1,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff',
+        },
+        errorCorrectionLevel: 'M',
+      });
+    } catch (e) {
+      console.error('Failed to generate QR code buffer:', e);
+    }
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 20,
+        compress: false,
+        info: {
+          Title: `Credit Note - ${invoice.invoiceNumber}`,
+          Author: settings?.companyName || 'MSK LOGISTIC SOLUTION',
+        },
+      });
+
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', (err) => reject(err));
+
+      const leftX = 24;
+      const contentWidth = 547;
+      const rightX = leftX + contentWidth; // 571
+      const borderDark = '#1e293b';
+      const borderTable = '#475569';
+      const borderLight = '#94a3b8';
+      const fillHeader = '#1e293b';
+      const fillSubHeader = '#f8fafc';
+      const textDark = '#0f172a';
+      const textMuted = '#475569';
+      const mskRed = '#dc2626';
+
+      let y = 22;
+
+      // ==========================================
+      // 1. TOP HEADER (QR CODE, COMPANY DETAILS, MSK & ISO LOGOS)
+      // ==========================================
+      const headerBoxHeight = 78;
+      doc.rect(leftX, y, contentWidth, headerBoxHeight).stroke(borderDark);
+
+      // A. QR Code Box (Left) - "Scan to Verify Credit Note"
+      const qrBoxWidth = 84;
+      doc.rect(leftX, y, qrBoxWidth, headerBoxHeight).stroke(borderLight);
+      doc.font('Helvetica-Bold').fontSize(5.2).fillColor(textDark)
+        .text('Scan to Verify Credit Note', leftX + 2, y + 5, { width: qrBoxWidth - 4, align: 'center' });
+
+      if (qrBuffer) {
+        try {
+          doc.image(qrBuffer, leftX + (qrBoxWidth - 52) / 2, y + 16, {
+            fit: [52, 52],
+            align: 'center',
+            valign: 'center',
+          });
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // B. Center: Company Heading & Details
+      const centerWidth = 370;
+      const centerX = leftX + qrBoxWidth;
+
+      doc.font('Helvetica-Bold').fontSize(13).fillColor(textDark)
+        .text(settings?.companyName || 'MSK LOGISTIC SOLUTION', centerX, y + 7, {
+          width: centerWidth,
+          align: 'center',
+        });
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(textMuted)
+        .text(
+          `${settings?.address || 'JNPT Township Colony, Sector - 3, Building No. B/48, Office No. 3'}, ${settings?.city || 'Navi Mumbai'} ${settings?.pincode || '400702'}.`,
+          centerX,
+          y + 24,
+          { width: centerWidth, align: 'center' }
+        );
+
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text(
+          `TAN NO: ${settings?.tan || 'PNES72845D'}   PAN NO: ${settings?.pan || 'AXWPK4562G'}   GST NO: ${settings?.gstin || '27AXWPK4562G1ZX'}`,
+          centerX,
+          y + 37,
+          { width: centerWidth, align: 'center' }
+        );
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(textMuted)
+        .text(
+          `Email id : ${settings?.email || 'accounts@msklogisticsolution.com'}   Mob No. ${settings?.phone || '+91 8104592823'}`,
+          centerX,
+          y + 49,
+          { width: centerWidth, align: 'center' }
+        );
+
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(mskRed)
+        .text(settings?.website || 'www.msklogisticsolution.com', centerX, y + 61, {
+          width: centerWidth,
+          align: 'center',
+        });
+
+      // C. Right: Official Logos (MSK Logo & ISO Certified Stamp)
+      const rightBoxWidth = 93;
+      const rightBoxX = rightX - rightBoxWidth;
+      doc.rect(rightBoxX, y, rightBoxWidth, headerBoxHeight).stroke(borderLight);
+
+      const mskLogoPath = getAssetPath('msk-logo.png');
+      const isoLogoPath = getAssetPath('iso-logo.png');
+
+      if (mskLogoPath) {
+        try {
+          doc.image(mskLogoPath, rightBoxX + 6, y + 6, {
+            fit: [81, 38],
+            align: 'center',
+            valign: 'center',
+          });
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      if (isoLogoPath) {
+        try {
+          doc.image(isoLogoPath, rightBoxX + 26, y + 46, {
+            fit: [40, 26],
+            align: 'center',
+            valign: 'center',
+          });
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      y += headerBoxHeight;
+
+      // ==========================================
+      // 2. DOCUMENT TITLE BANNER: CREDIT NOTE
+      // ==========================================
+      const titleBannerHeight = 22;
+      doc.rect(leftX, y, contentWidth, titleBannerHeight).fill(fillHeader).stroke(borderDark);
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#ffffff')
+        .text('CREDIT NOTE (CREDIT ADJUSTMENT INVOICE)', leftX, y + 6, {
+          width: contentWidth,
+          align: 'center',
+        });
+      y += titleBannerHeight;
+
+      // ==========================================
+      // 3. CREDIT NOTE INFORMATION GRID (4 COLUMNS x 2 ROWS)
+      // ==========================================
+      const gridRowH = 17;
+      const gridTotalH = gridRowH * 2;
+      const colW1 = 136;
+      const colW2 = 136;
+      const colW3 = 137;
+      const colW4 = 138;
+
+      doc.rect(leftX, y, contentWidth, gridTotalH).stroke(borderDark);
+      doc.moveTo(leftX, y + gridRowH).lineTo(rightX, y + gridRowH).stroke(borderLight);
+      
+      const v1 = leftX + colW1;
+      const v2 = v1 + colW2;
+      const v3 = v2 + colW3;
+      doc.moveTo(v1, y).lineTo(v1, y + gridTotalH).stroke(borderLight);
+      doc.moveTo(v2, y).lineTo(v2, y + gridTotalH).stroke(borderLight);
+      doc.moveTo(v3, y).lineTo(v3, y + gridTotalH).stroke(borderLight);
+
+      // Row 1
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Credit Note No:', leftX + 4, y + 2.5);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(mskRed).text(invoice.invoiceNumber || '-', leftX + 4, y + 8.5);
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Date of Issue:', v1 + 4, y + 2.5);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark).text(formatDate(invoice.issueDate), v1 + 4, y + 8.5);
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Original Invoice No:', v2 + 4, y + 2.5);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark).text(invoice.originalInvoiceNumber || '-', v2 + 4, y + 8.5);
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Original Invoice Date:', v3 + 4, y + 2.5);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark).text(formatDate(invoice.originalInvoiceDate), v3 + 4, y + 8.5);
+
+      // Row 2
+      const r2Y = y + gridRowH;
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Place of Supply:', leftX + 4, r2Y + 2.5);
+      doc.font('Helvetica-Bold').fontSize(7.2).fillColor(textDark).text(invoice.placeOfSupply || 'Maharashtra (27)', leftX + 4, r2Y + 8.5);
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Currency:', v1 + 4, r2Y + 2.5);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark).text(invoice.currency || 'INR', v1 + 4, r2Y + 8.5);
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Reason for Credit:', v2 + 4, r2Y + 2.5);
+      doc.font('Helvetica-Bold').fontSize(7.2).fillColor(textDark).text(invoice.reasonForCredit || 'Service Charge Adjustment', v2 + 4, r2Y + 8.5, { width: colW3 - 8 });
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Status:', v3 + 4, r2Y + 2.5);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#16a34a').text((invoice.status || 'FINAL').toUpperCase(), v3 + 4, r2Y + 8.5);
+
+      y += gridTotalH;
+
+      // ==========================================
+      // 4. RECIPIENT & SHIPMENT REFERENCE (SIDE-BY-SIDE)
+      // ==========================================
+      const partyBoxH = 68;
+      const partySplitX = leftX + 273; // width: 273 and 274
+      doc.rect(leftX, y, contentWidth, partyBoxH).stroke(borderDark);
+      doc.moveTo(partySplitX, y).lineTo(partySplitX, y + partyBoxH).stroke(borderDark);
+
+      // Section Subheaders
+      const subHeaderH = 15;
+      doc.rect(leftX, y, 273, subHeaderH).fill(fillSubHeader).stroke(borderLight);
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark).text('BILL TO (RECIPIENT)', leftX + 6, y + 4);
+
+      doc.rect(partySplitX, y, 274, subHeaderH).fill(fillSubHeader).stroke(borderLight);
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark).text('SHIPMENT REFERENCE', partySplitX + 6, y + 4);
+
+      // Left: Recipient details
+      const party = invoice.party;
+      const billY = y + subHeaderH + 4;
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark).text(party?.name || 'N/A', leftX + 6, billY, { width: 260 });
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text(party?.address || '-', leftX + 6, billY + 11, { width: 260 });
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text(`City: ${party?.city || '-'} | Pincode: ${party?.pincode || '-'}`, leftX + 6, billY + 22);
+      doc.font('Helvetica-Bold').fontSize(6.8).fillColor(textDark).text(`GSTIN: ${party?.gstin || '-'} | PAN: ${party?.pan || '-'}`, leftX + 6, billY + 33);
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text(`State: ${party?.state || '-'} (${party?.stateCode || '-'})`, leftX + 6, billY + 43);
+
+      // Right: Shipment reference
+      const shipY = y + subHeaderH + 4;
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Vessel / Voyage:', partySplitX + 6, shipY);
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark).text(invoice.vesselVoyage || '-', partySplitX + 75, shipY, { width: 190 });
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('MBL / HBL Ref:', partySplitX + 6, shipY + 12);
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark).text(invoice.mblHbl || '-', partySplitX + 75, shipY + 12, { width: 190 });
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Port of Loading:', partySplitX + 6, shipY + 24);
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark).text(invoice.portOfLoading || '-', partySplitX + 75, shipY + 24, { width: 190 });
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textMuted).text('Port of Discharge:', partySplitX + 6, shipY + 36);
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark).text(invoice.portOfDischarge || '-', partySplitX + 75, shipY + 36, { width: 190 });
+
+      y += partyBoxH;
+
+      // ==========================================
+      // 5. CREDIT ADJUSTMENT TABLE (6 COLUMNS WITH CHARCOAL HEADER)
+      // ==========================================
+      const tableHeaderH = 18;
+      const colWidths = [28, 110, 204, 65, 40, 100]; // sum = 547
+      const colAligns: ('left' | 'center' | 'right')[] = ['center', 'left', 'left', 'right', 'center', 'right'];
+      const headers = [
+        'SR.',
+        'CONTAINER NO. & SIZE',
+        'DESCRIPTION OF SERVICE ADJUSTMENT',
+        'RATE (INR)',
+        'QTY',
+        'CREDIT VALUE (INR)',
+      ];
+
+      doc.rect(leftX, y, contentWidth, tableHeaderH).fill(fillHeader).stroke(borderDark);
+
+      let hx = leftX;
+      for (let i = 0; i < headers.length; i++) {
+        const w = colWidths[i];
+        if (i > 0) {
+          doc.moveTo(hx, y).lineTo(hx, y + tableHeaderH).stroke(borderTable);
+        }
+        doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#ffffff')
+          .text(headers[i], hx + (colAligns[i] === 'center' ? 0 : 4), y + 5.5, {
+            width: colAligns[i] === 'center' ? w : w - 8,
+            align: colAligns[i],
+          });
+        hx += w;
+      }
+      y += tableHeaderH;
+
+      // Line items
+      const items = (invoice.items && invoice.items.length > 0) ? invoice.items : [
+        {
+          containerNumber: invoice.containers?.[0]?.containerNumber || '-',
+          containerSize: invoice.containers?.[0]?.containerSize || '40ft',
+          description: invoice.notes || 'Service Adjustment on Original Invoice',
+          rate: invoice.taxableAmount || invoice.subtotal || 0,
+          quantity: 1,
+          amount: invoice.taxableAmount || invoice.subtotal || 0,
+        }
+      ];
+
+      const itemRowH = 20;
+      items.forEach((item: any, idx: number) => {
+        const rowBg = idx % 2 === 0 ? '#ffffff' : '#fcfcfc';
+        doc.rect(leftX, y, contentWidth, itemRowH).fill(rowBg).stroke(borderLight);
+
+        let rx = leftX;
+        for (let i = 0; i < colWidths.length; i++) {
+          const w = colWidths[i];
+          if (i > 0) {
+            doc.moveTo(rx, y).lineTo(rx, y + itemRowH).stroke(borderLight);
+          }
+
+          let val = '';
+          if (i === 0) val = String(idx + 1);
+          else if (i === 1) {
+            const cNum = item.containerNumber || invoice.containers?.[idx]?.containerNumber || '-';
+            const cSize = item.containerSize || invoice.containers?.[idx]?.containerSize || '';
+            val = cSize ? `${cNum} (${cSize})` : cNum;
+          } else if (i === 2) val = item.description || '-';
+          else if (i === 3) val = formatCurrency(item.rate, invoice.currency);
+          else if (i === 4) val = String(item.quantity ?? 1);
+          else if (i === 5) val = formatCurrency(item.amount, invoice.currency);
+
+          doc.font('Helvetica').fontSize(6.8).fillColor(textDark)
+            .text(val, rx + (colAligns[i] === 'center' ? 0 : 4), y + 5.5, {
+              width: colAligns[i] === 'center' ? w : w - 8,
+              align: colAligns[i],
+            });
+          rx += w;
+        }
+        y += itemRowH;
+      });
+
+      // Fill remaining space if few rows (keep table structured)
+      const minRows = 3;
+      if (items.length < minRows) {
+        for (let pad = items.length; pad < minRows; pad++) {
+          doc.rect(leftX, y, contentWidth, itemRowH).fill('#ffffff').stroke(borderLight);
+          let px = leftX;
+          for (let i = 0; i < colWidths.length; i++) {
+            const w = colWidths[i];
+            if (i > 0) doc.moveTo(px, y).lineTo(px, y + itemRowH).stroke(borderLight);
+            px += w;
+          }
+          y += itemRowH;
+        }
+      }
+
+      // ==========================================
+      // 6. BOTTOM SUMMARY & SIGNATORY SECTION
+      // ==========================================
+      const bottomSplitX = leftX + 315; // Left: 315, Right: 232
+      const bottomBoxH = 125;
+      doc.rect(leftX, y, contentWidth, bottomBoxH).stroke(borderDark);
+      doc.moveTo(bottomSplitX, y).lineTo(bottomSplitX, y + bottomBoxH).stroke(borderDark);
+
+      // --- LEFT SIDE: Amount in Words & Legal Compliance Note ---
+      const leftPadX = leftX + 8;
+      const leftInnerW = 300;
+
+      doc.font('Helvetica').fontSize(7).fillColor(textDark)
+        .text('Total credit amount in words:', leftPadX, y + 6);
+
+      const defaultWords = invoice.currency === 'USD' ? 'US Dollars Zero Only' : 'INR Zero Only';
+      let wordsText = (invoice.amountInWords || defaultWords).toUpperCase();
+      if (!wordsText.endsWith('ONLY')) {
+        wordsText = `${wordsText} ONLY`;
+      }
+
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text(wordsText, leftPadX, y + 17, { width: leftInnerW, lineGap: 1.5 });
+
+      // Legal & Compliance Note Box
+      const noteTopY = y + 42;
+      doc.moveTo(leftX, noteTopY - 4).lineTo(bottomSplitX, noteTopY - 4).stroke(borderLight);
+
+      doc.font('Helvetica-Bold').fontSize(6.8).fillColor(textDark)
+        .text('NOTES & STATUTORY COMPLIANCE:', leftPadX, noteTopY);
+
+      doc.font('Helvetica').fontSize(6.4).fillColor(textMuted)
+        .text(
+          `1. This Credit Note is issued in accordance with Section 34 of the CGST Act, 2017 against Original Tax Invoice ${invoice.originalInvoiceNumber || 'referenced above'}.\n2. Input Tax Credit (ITC) reversed / credited shall be adjusted in GSTR-1 & GSTR-3B filings.\n3. All credit adjustments are subject to final accounts reconciliation.\n4. Scan the top-left QR code anytime to verify the authenticity of this document.`,
+          leftPadX,
+          noteTopY + 11,
+          { width: leftInnerW, lineGap: 2 }
+        );
+
+      // --- RIGHT SIDE: Tax Summary & Authorized Signatory ---
+      const rightPadX = bottomSplitX + 8;
+      const rightInnerW = rightX - bottomSplitX - 16;
+      let ry = y + 6;
+      const curr = invoice.currency === 'USD' ? '$' : '₹';
+
+      // Subtotal Taxable Amount
+      doc.font('Helvetica').fontSize(7.5).fillColor(textDark)
+        .text('Subtotal Taxable Amount:', rightPadX, ry);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text(`${curr} ${formatCurrency(invoice.taxableAmount ?? invoice.subtotal, invoice.currency)}`, rightPadX, ry, {
+          width: rightInnerW,
+          align: 'right',
+        });
+      ry += 15;
+
+      // Taxes (IGST or CGST + SGST)
+      if (invoice.isInterState) {
+        doc.font('Helvetica').fontSize(7.5).fillColor('#7c3aed')
+          .text(`Add: IGST (${invoice.igstRate || 18}%):`, rightPadX, ry);
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#7c3aed')
+          .text(`${curr} ${formatCurrency(invoice.igstAmount, invoice.currency)}`, rightPadX, ry, {
+            width: rightInnerW,
+            align: 'right',
+          });
+        ry += 15;
+      } else {
+        doc.font('Helvetica').fontSize(7.5).fillColor('#7c3aed')
+          .text(`Add: CGST (${invoice.cgstRate || 9}%):`, rightPadX, ry);
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#7c3aed')
+          .text(`${curr} ${formatCurrency(invoice.cgstAmount, invoice.currency)}`, rightPadX, ry, {
+            width: rightInnerW,
+            align: 'right',
+          });
+        ry += 14;
+
+        doc.font('Helvetica').fontSize(7.5).fillColor('#7c3aed')
+          .text(`Add: SGST (${invoice.sgstRate || 9}%):`, rightPadX, ry);
+        doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#7c3aed')
+          .text(`${curr} ${formatCurrency(invoice.sgstAmount, invoice.currency)}`, rightPadX, ry, {
+            width: rightInnerW,
+            align: 'right',
+          });
+        ry += 15;
+      }
+
+      // Round off
+      if (invoice.roundOff && Math.abs(invoice.roundOff) > 0.001) {
+        doc.font('Helvetica').fontSize(7.2).fillColor(textMuted)
+          .text('Round Off:', rightPadX, ry);
+        doc.font('Helvetica').fontSize(7.2).fillColor(textMuted)
+          .text(`${curr} ${formatCurrency(invoice.roundOff, invoice.currency)}`, rightPadX, ry, {
+            width: rightInnerW,
+            align: 'right',
+          });
+        ry += 13;
+      }
+
+      // TOTAL CREDIT VALUE
+      doc.moveTo(bottomSplitX, ry).lineTo(rightX, ry).stroke(borderLight);
+      ry += 4;
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(textDark)
+        .text('TOTAL CREDIT VALUE:', rightPadX, ry);
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(mskRed)
+        .text(`${curr} ${formatCurrency(invoice.grandTotal, invoice.currency)}`, rightPadX, ry, {
+          width: rightInnerW,
+          align: 'right',
+        });
+
+      // Signatory Section
+      const signDividerY = ry + 16;
+      doc.moveTo(bottomSplitX, signDividerY).lineTo(rightX, signDividerY).stroke(borderTable);
+
+      const signY = signDividerY + 4;
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text(`For ${settings?.companyName || 'MSK LOGISTIC SOLUTION'}`, bottomSplitX, signY, {
+          width: rightX - bottomSplitX,
+          align: 'center',
+        });
+
+      if (settings?.signatureUrl && fs.existsSync(settings.signatureUrl)) {
+        try {
+          doc.image(settings.signatureUrl, bottomSplitX + (rightX - bottomSplitX - 80) / 2, signY + 12, {
+            fit: [80, 24],
+            align: 'center',
+          });
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      doc.font('Helvetica').fontSize(7).fillColor(textMuted)
+        .text('Authorised Signatory', bottomSplitX, signY + 36, {
+          width: rightX - bottomSplitX,
+          align: 'center',
+        });
+
+      // Finalize document
       doc.end();
     });
   }

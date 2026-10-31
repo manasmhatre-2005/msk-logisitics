@@ -33,6 +33,9 @@ router.post('/invoices/calculate', InvoiceController.calculate);
 router.get('/whatsapp/webhook', WhatsAppController.webhookGet);
 router.post('/whatsapp/webhook', WhatsAppController.webhookPost);
 
+// Public Credit Note Verification (Scan QR to verify)
+router.get('/credit-notes/verify/:token', InvoiceController.verifyCreditNote);
+
 // Authenticated Routes
 router.use(authenticate);
 

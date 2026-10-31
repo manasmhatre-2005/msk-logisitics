@@ -7,6 +7,8 @@ import { GSTINSearchWidget } from './components/gstin/GSTINSearchWidget';
 import { InvoiceWizard } from './components/invoice/InvoiceWizard';
 import { BillTypeSelectionModal } from './components/invoice/BillTypeSelectionModal';
 import { InvoicePrintView } from './components/invoice/InvoicePrintView';
+import { CreditNoteForm } from './components/credit-note/CreditNoteForm';
+import { CreditNotePrintView } from './components/credit-note/CreditNotePrintView';
 import { LogiBillAssistantChatbot } from './components/chat/LogiBillAssistantChatbot';
 import { Modal } from './components/common/Modal';
 
@@ -22,6 +24,7 @@ import { ContainersPage } from './pages/ContainersPage';
 import { ChargesPage } from './pages/ChargesPage';
 import { InvoicesPage } from './pages/InvoicesPage';
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
+import { CreditNoteVerificationPage } from './pages/CreditNoteVerificationPage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { WhatsAppPage } from './pages/WhatsAppPage';
@@ -32,11 +35,22 @@ import { AuditLogPage } from './pages/AuditLogPage';
 import { Party, Invoice, BillType } from './types/index';
 
 const MainApp: React.FC = () => {
+  // Support public read-only verification of Credit Notes via QR code scan
+  const pathname = window.location.pathname;
+  const searchParams = new URLSearchParams(window.location.search);
+  const verifyMatch = pathname.match(/^\/verify\/cn\/([a-zA-Z0-9_-]+)/);
+  const verifyToken = verifyMatch ? verifyMatch[1] : searchParams.get('verify_cn');
+
+  if (verifyToken) {
+    return <CreditNoteVerificationPage token={verifyToken} />;
+  }
+
   const { user, loading } = useAuth();
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [printableInvoice, setPrintableInvoice] = useState<Invoice | null>(null);
+  const [printableCreditNote, setPrintableCreditNote] = useState<Invoice | null>(null);
 
   // Modals
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -44,6 +58,7 @@ const MainApp: React.FC = () => {
   const [isBillTypeModalOpen, setIsBillTypeModalOpen] = useState(false);
   const [selectedBillType, setSelectedBillType] = useState<BillType | null>(null);
   const [isInvoiceWizardOpen, setIsInvoiceWizardOpen] = useState(false);
+  const [isCreditNoteFormOpen, setIsCreditNoteFormOpen] = useState(false);
   const [prefilledPartyForWizard, setPrefilledPartyForWizard] = useState<Partial<Party> | null>(null);
 
   // Global Ctrl+K hotkey for search
@@ -78,7 +93,19 @@ const MainApp: React.FC = () => {
   const handleSelectBillType = (billType: BillType) => {
     setSelectedBillType(billType);
     setIsBillTypeModalOpen(false);
-    setIsInvoiceWizardOpen(true);
+    if (billType === 'CREDIT_NOTE') {
+      setIsCreditNoteFormOpen(true);
+    } else {
+      setIsInvoiceWizardOpen(true);
+    }
+  };
+
+  const handlePrintInvoice = (inv: Invoice) => {
+    if (inv.billType === 'CREDIT_NOTE') {
+      setPrintableCreditNote(inv);
+    } else {
+      setPrintableInvoice(inv);
+    }
   };
 
   const handleStartInvoiceFromGstin = (partyData: Partial<Party>) => {
@@ -139,7 +166,7 @@ const MainApp: React.FC = () => {
                 setSelectedInvoiceId(id);
                 setCurrentTab('invoices');
               }}
-              onPrintInvoice={(inv) => setPrintableInvoice(inv)}
+              onPrintInvoice={(inv) => handlePrintInvoice(inv)}
               onWhatsAppInvoice={(inv) => {
                 setSelectedInvoiceId(inv.id);
                 setCurrentTab('invoices');
@@ -201,13 +228,13 @@ const MainApp: React.FC = () => {
               <InvoiceDetailPage
                 invoiceId={selectedInvoiceId}
                 onBack={() => setSelectedInvoiceId(null)}
-                onPrint={(inv) => setPrintableInvoice(inv)}
+                onPrint={(inv) => handlePrintInvoice(inv)}
               />
             ) : (
               <InvoicesPage
                 onCreateInvoice={() => handleOpenCreateInvoice()}
                 onViewInvoice={(id) => setSelectedInvoiceId(id)}
-                onPrintInvoice={(inv) => setPrintableInvoice(inv)}
+                onPrintInvoice={(inv) => handlePrintInvoice(inv)}
               />
             )
           )}
@@ -282,11 +309,34 @@ const MainApp: React.FC = () => {
         </div>
       )}
 
+      {/* Dedicated Credit Note Creation Form */}
+      {isCreditNoteFormOpen && (
+        <CreditNoteForm
+          isOpen={isCreditNoteFormOpen}
+          onClose={() => setIsCreditNoteFormOpen(false)}
+          onSuccess={(savedCn) => {
+            setIsCreditNoteFormOpen(false);
+            setPrintableCreditNote(savedCn);
+            setSelectedInvoiceId(savedCn.id);
+            setCurrentTab('invoices');
+          }}
+        />
+      )}
+
       {/* Printable Invoice View (A4 Portrait) */}
       {printableInvoice && (
         <InvoicePrintView
           invoice={printableInvoice}
           onClose={() => setPrintableInvoice(null)}
+        />
+      )}
+
+      {/* Dedicated Credit Note Print / Verification View (A4 Portrait with QR Code) */}
+      {printableCreditNote && (
+        <CreditNotePrintView
+          invoice={printableCreditNote}
+          isOpen={Boolean(printableCreditNote)}
+          onClose={() => setPrintableCreditNote(null)}
         />
       )}
 

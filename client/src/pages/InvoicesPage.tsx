@@ -123,6 +123,7 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
 
   const statusTabs = [
     { id: 'ALL', label: 'All Invoices' },
+    { id: 'CREDIT_NOTE', label: 'Credit Notes' },
     { id: 'DRAFT', label: 'Drafts' },
     { id: 'FINALIZED', label: 'Finalized' },
     { id: 'SENT', label: 'Sent' },
@@ -227,12 +228,24 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
                 invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
                     <td className="p-3.5 font-mono font-bold text-red-700">
-                      <button
-                        onClick={() => onViewInvoice(inv.id)}
-                        className="hover:underline text-left"
-                      >
-                        {inv.invoiceNumber}
-                      </button>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          onClick={() => onViewInvoice(inv.id)}
+                          className="hover:underline text-left"
+                        >
+                          {inv.invoiceNumber}
+                        </button>
+                        {inv.billType === 'CREDIT_NOTE' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-purple-100 text-purple-700 border border-purple-200">
+                            Credit Note
+                          </span>
+                        )}
+                      </div>
+                      {inv.originalInvoiceNumber && (
+                        <p className="text-[10px] text-slate-500 font-normal font-sans mt-0.5">
+                          Adj Ref: <span className="font-mono text-slate-700 font-semibold">{inv.originalInvoiceNumber}</span>
+                        </p>
+                      )}
                     </td>
                     <td className="p-3.5 text-slate-600">
                       <p>{new Date(inv.invoiceDate).toLocaleDateString()}</p>

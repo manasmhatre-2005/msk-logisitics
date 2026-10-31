@@ -198,6 +198,7 @@ export const api = {
     }),
   getInvoicePdfUrl: (id: string, templateId?: string) =>
     `/api/invoices/${id}/pdf${templateId ? `?templateId=${encodeURIComponent(templateId)}` : ''}`,
+  verifyCreditNote: (token: string) => request<any>(`/credit-notes/verify/${token}`),
   sendInvoiceEmail: (id: string, data: { recipientEmail: string; recipientName?: string; ccEmail?: string; subject?: string; customMessage?: string; templateId?: string }) =>
     request<any>(`/invoices/${id}/email`, {
       method: 'POST',
