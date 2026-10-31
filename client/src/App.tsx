@@ -5,6 +5,7 @@ import { Header } from './components/layout/Header';
 import { GlobalSearchModal } from './components/layout/GlobalSearchModal';
 import { GSTINSearchWidget } from './components/gstin/GSTINSearchWidget';
 import { InvoiceWizard } from './components/invoice/InvoiceWizard';
+import { BillTypeSelectionModal } from './components/invoice/BillTypeSelectionModal';
 import { InvoicePrintView } from './components/invoice/InvoicePrintView';
 import { LogiBillAssistantChatbot } from './components/chat/LogiBillAssistantChatbot';
 import { Modal } from './components/common/Modal';
@@ -28,7 +29,7 @@ import { UsersPage } from './pages/UsersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 
-import { Party, Invoice } from './types/index';
+import { Party, Invoice, BillType } from './types/index';
 
 const MainApp: React.FC = () => {
   const { user, loading } = useAuth();
@@ -40,6 +41,8 @@ const MainApp: React.FC = () => {
   // Modals
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isGstinModalOpen, setIsGstinModalOpen] = useState(false);
+  const [isBillTypeModalOpen, setIsBillTypeModalOpen] = useState(false);
+  const [selectedBillType, setSelectedBillType] = useState<BillType | null>(null);
   const [isInvoiceWizardOpen, setIsInvoiceWizardOpen] = useState(false);
   const [prefilledPartyForWizard, setPrefilledPartyForWizard] = useState<Partial<Party> | null>(null);
 
@@ -67,10 +70,20 @@ const MainApp: React.FC = () => {
     return <Login />;
   }
 
-  const handleStartInvoiceFromGstin = (partyData: Partial<Party>) => {
-    setPrefilledPartyForWizard(partyData);
-    setIsGstinModalOpen(false);
+  const handleOpenCreateInvoice = (partyData?: Partial<Party> | null) => {
+    setPrefilledPartyForWizard(partyData || null);
+    setIsBillTypeModalOpen(true);
+  };
+
+  const handleSelectBillType = (billType: BillType) => {
+    setSelectedBillType(billType);
+    setIsBillTypeModalOpen(false);
     setIsInvoiceWizardOpen(true);
+  };
+
+  const handleStartInvoiceFromGstin = (partyData: Partial<Party>) => {
+    setIsGstinModalOpen(false);
+    handleOpenCreateInvoice(partyData);
   };
 
   const handleNavigateFromSearch = (tab: string, id?: string) => {
@@ -90,10 +103,7 @@ const MainApp: React.FC = () => {
           setSelectedInvoiceId(null);
         }}
         onOpenGstinModal={() => setIsGstinModalOpen(true)}
-        onOpenInvoiceWizard={() => {
-          setPrefilledPartyForWizard(null);
-          setIsInvoiceWizardOpen(true);
-        }}
+        onOpenInvoiceWizard={() => handleOpenCreateInvoice()}
       />
 
       {/* Main App Container */}
@@ -102,10 +112,7 @@ const MainApp: React.FC = () => {
         <Header
           onOpenSearch={() => setIsSearchModalOpen(true)}
           onOpenGstinModal={() => setIsGstinModalOpen(true)}
-          onOpenInvoiceWizard={() => {
-            setPrefilledPartyForWizard(null);
-            setIsInvoiceWizardOpen(true);
-          }}
+          onOpenInvoiceWizard={() => handleOpenCreateInvoice()}
           onOpenAddPartyModal={() => {
             setCurrentTab('parties');
             setSelectedPartyId(null);
@@ -121,10 +128,7 @@ const MainApp: React.FC = () => {
             <Dashboard
               onOpenSearch={() => setIsSearchModalOpen(true)}
               onOpenGstinModal={() => setIsGstinModalOpen(true)}
-              onOpenInvoiceWizard={() => {
-                setPrefilledPartyForWizard(null);
-                setIsInvoiceWizardOpen(true);
-              }}
+              onOpenInvoiceWizard={() => handleOpenCreateInvoice()}
               onOpenAddPartyModal={() => {
                 setCurrentTab('parties');
                 setSelectedPartyId(null);
@@ -165,10 +169,7 @@ const MainApp: React.FC = () => {
               <PartyDetailPage
                 partyId={selectedPartyId}
                 onBack={() => setSelectedPartyId(null)}
-                onCreateInvoice={(party) => {
-                  setPrefilledPartyForWizard(party);
-                  setIsInvoiceWizardOpen(true);
-                }}
+                onCreateInvoice={(party) => handleOpenCreateInvoice(party)}
                 onViewInvoice={(invId) => {
                   setSelectedInvoiceId(invId);
                   setCurrentTab('invoices');
@@ -177,10 +178,7 @@ const MainApp: React.FC = () => {
             ) : (
               <PartiesPage
                 onSelectParty={(id) => setSelectedPartyId(id)}
-                onCreateInvoiceForParty={(party) => {
-                  setPrefilledPartyForWizard(party);
-                  setIsInvoiceWizardOpen(true);
-                }}
+                onCreateInvoiceForParty={(party) => handleOpenCreateInvoice(party)}
               />
             )
           )}
@@ -207,10 +205,7 @@ const MainApp: React.FC = () => {
               />
             ) : (
               <InvoicesPage
-                onCreateInvoice={() => {
-                  setPrefilledPartyForWizard(null);
-                  setIsInvoiceWizardOpen(true);
-                }}
+                onCreateInvoice={() => handleOpenCreateInvoice()}
                 onViewInvoice={(id) => setSelectedInvoiceId(id)}
                 onPrintInvoice={(inv) => setPrintableInvoice(inv)}
               />
@@ -262,12 +257,20 @@ const MainApp: React.FC = () => {
         />
       </Modal>
 
+      {/* Bill Type Selection Modal */}
+      <BillTypeSelectionModal
+        isOpen={isBillTypeModalOpen}
+        onClose={() => setIsBillTypeModalOpen(false)}
+        onSelectBillType={handleSelectBillType}
+      />
+
       {/* Invoice Creation Wizard Modal */}
       {isInvoiceWizardOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs p-4 sm:p-8">
           <div className="max-w-5xl mx-auto">
             <InvoiceWizard
               initialParty={prefilledPartyForWizard}
+              initialBillType={selectedBillType}
               onSuccess={(createdInv) => {
                 setIsInvoiceWizardOpen(false);
                 setSelectedInvoiceId(createdInv.id);

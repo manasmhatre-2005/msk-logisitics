@@ -24,7 +24,7 @@ import {
   Info,
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { Party, Exporter, Job, Container, ChargeMaster, Invoice, CompanySettings, Currency, BillFormatId, BILL_FORMAT_SLOTS } from '../../types/index';
+import { Party, Exporter, Job, Container, ChargeMaster, Invoice, CompanySettings, Currency, BillFormatId, BILL_FORMAT_SLOTS, BillType, BILL_TYPE_LIST } from '../../types/index';
 import { Badge } from '../common/Badge';
 import { DateCalculationBox } from '../common/DateCalculationBox';
 import { getCurrencySymbol, formatCurrency } from '../../utils/currency';
@@ -33,12 +33,14 @@ import { EmailSendModal } from '../email/EmailSendModal';
 
 interface InvoiceWizardProps {
   initialParty?: Partial<Party> | null;
+  initialBillType?: BillType | null;
   onSuccess: (invoice: Invoice) => void;
   onCancel: () => void;
 }
 
 export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
   initialParty,
+  initialBillType,
   onSuccess,
   onCancel,
 }) => {
@@ -46,12 +48,30 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Bill Type
+  const [billType, setBillType] = useState<BillType | null>(initialBillType || null);
+
   // Master Data
   const [parties, setParties] = useState<Party[]>([]);
   const [exporters, setExporters] = useState<Exporter[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [chargeMasters, setChargeMasters] = useState<ChargeMaster[]>([]);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
+
+  const getDefaultNotesForBillType = (bType?: BillType | null) => {
+    switch (bType) {
+      case 'EMPTY_CONTAINER':
+        return 'Empty container movement, repositioning & yard handling charges.';
+      case 'CREDIT_NOTE':
+        return 'Credit note towards billing adjustment and rate revision.';
+      case 'HT_BILL':
+        return 'Operational charges for handling & transportation (H & T).';
+      case 'FORWARDING':
+        return 'Freight forwarding, shipping documentation & terminal logistics charges.';
+      default:
+        return 'Operational charges for container movement.';
+    }
+  };
 
   // Wizard Form State
   const [currency, setCurrency] = useState<Currency>('INR');
@@ -65,7 +85,7 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
   const [sbNumbers, setSbNumbers] = useState('6010085/18.08.2026, 6007882/17.08.2026');
   const [consigneeName, setConsigneeName] = useState('');
   const [consigneeAddress, setConsigneeAddress] = useState('');
-  const [notes, setNotes] = useState('Operational charges for container movement.');
+  const [notes, setNotes] = useState(getDefaultNotesForBillType(initialBillType));
   const [terms, setTerms] = useState(
     '1. Payment due within 15 days of invoice date.\n2. Interest @ 18% p.a. charged for delayed payments.\n3. Subject to Mumbai Jurisdiction.'
   );
@@ -357,8 +377,16 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
       <div className="border-b border-slate-200 p-5 bg-slate-50/50">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900">New Logistics Tax Invoice</h2>
-            <p className="text-xs text-slate-500">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-bold text-slate-900">New Logistics Tax Invoice</h2>
+              {billType && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200">
+                  <FileText className="w-3 h-3 text-red-600" />
+                  <span>{BILL_TYPE_LIST.find((b) => b.id === billType)?.label || billType}</span>
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
               Complete the guided steps below to calculate and generate an A4 logistics invoice.
             </p>
           </div>

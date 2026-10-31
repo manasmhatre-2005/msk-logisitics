@@ -10,6 +10,47 @@ export interface User {
 
 export type Currency = 'INR' | 'USD';
 
+export type BillType = 'EMPTY_CONTAINER' | 'CREDIT_NOTE' | 'HT_BILL' | 'FORWARDING';
+
+export interface BillTypeOption {
+  id: BillType;
+  label: string;
+  subtitle: string;
+  orderNumber: number;
+  badge?: string;
+}
+
+export const BILL_TYPE_LIST: BillTypeOption[] = [
+  {
+    id: 'EMPTY_CONTAINER',
+    label: 'Empty Container Bill',
+    subtitle: 'Container movement, positioning, lift-on/off & yard operations',
+    orderNumber: 1,
+    badge: 'Bill 1',
+  },
+  {
+    id: 'CREDIT_NOTE',
+    label: 'Credit Note Bill',
+    subtitle: 'Billing adjustments, rate credits, allowances & invoice revisions',
+    orderNumber: 2,
+    badge: 'Bill 2',
+  },
+  {
+    id: 'HT_BILL',
+    label: 'H & T Bill',
+    subtitle: 'Haulage, local transport carting, stuffing & trailer movements',
+    orderNumber: 3,
+    badge: 'Bill 3',
+  },
+  {
+    id: 'FORWARDING',
+    label: 'Forwarding Bill',
+    subtitle: 'Freight forwarding, shipping line charges & terminal documentation',
+    orderNumber: 4,
+    badge: 'Bill 4',
+  },
+];
+
 export type BillFormatId = 'format-1' | 'format-2' | 'format-3' | 'format-4' | 'format-5';
 
 export interface BillFormatOption {
