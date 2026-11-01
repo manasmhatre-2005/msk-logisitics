@@ -41,7 +41,6 @@ interface DashboardProps {
   onOpenAddContainerModal: () => void;
   onViewInvoice: (id: string) => void;
   onPrintInvoice: (inv: Invoice) => void;
-  onWhatsAppInvoice: (inv: Invoice) => void;
   onNavigateTab: (tab: string) => void;
 }
 
@@ -53,7 +52,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenAddContainerModal,
   onViewInvoice,
   onPrintInvoice,
-  onWhatsAppInvoice,
   onNavigateTab,
 }) => {
   const [stats, setStats] = useState<any>(null);
@@ -749,16 +747,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                               onClick={() => onPrintInvoice(inv)}
                               title="Print Invoice"
-                              className="rounded p-1 text-[#62758A] hover:bg-slate-100 hover:text-[#F5222D] transition-colors"
+                              className="rounded p-1 text-[#62758A] hover:bg-slate-100 hover:text-[#F5222D] transition-colors cursor-pointer"
                             >
                               <Printer className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => onWhatsAppInvoice(inv)}
-                              title="Send WhatsApp"
-                              className="rounded p-1 text-[#62758A] hover:bg-slate-100 hover:text-emerald-600 transition-colors"
-                            >
-                              <MessageSquare className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>

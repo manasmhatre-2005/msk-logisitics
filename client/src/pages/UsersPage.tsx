@@ -38,7 +38,7 @@ export const UsersPage: React.FC = () => {
       title: 'Billing Executive',
       email: 'billing@logibill.com',
       pass: 'billing123',
-      permissions: ['Tax Invoices', 'Party Master', 'Charges & Rates', 'PDF Generation', 'WhatsApp'],
+      permissions: ['Tax Invoices', 'Party Master', 'Charges & Rates', 'PDF Generation', 'Email Dispatch'],
       color: 'blue',
     },
     {

@@ -26,7 +26,6 @@ import { Party, Exporter, Job, Container, ChargeMaster, Invoice, CompanySettings
 import { Badge } from '../common/Badge';
 import { DateCalculationBox } from '../common/DateCalculationBox';
 import { getCurrencySymbol, formatCurrency } from '../../utils/currency';
-import { WhatsAppSendModal } from '../whatsapp/WhatsAppSendModal';
 import { EmailSendModal } from '../email/EmailSendModal';
 
 interface InvoiceWizardProps {
@@ -102,7 +101,6 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
 
   // Post-Save / Sharing Modal State
   const [createdInvoice, setCreatedInvoice] = useState<Invoice | null>(null);
-  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
 
   // Containers List
@@ -571,7 +569,7 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200">
                     <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <div className="truncate">
-                      <span className="text-[10px] text-slate-500 block leading-tight">Saved Phone (for WhatsApp):</span>
+                      <span className="text-[10px] text-slate-500 block leading-tight">Saved Phone / Mobile:</span>
                       {selectedParty.mobile ? (
                         <span className="font-medium text-slate-900 font-mono truncate block">{selectedParty.mobile}</span>
                       ) : (
@@ -1264,8 +1262,10 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
               </div>
             </div>
 
-            {/* A4 Invoice Preview Box */}
-            <div className="bg-white border border-slate-400 rounded-xl p-6 shadow-md text-[11px] space-y-0 font-sans">
+            {/* Scrollable A4 Invoice Preview Frame */}
+            <div className="max-h-[65vh] overflow-y-auto p-3 sm:p-6 bg-slate-200/60 rounded-xl border border-slate-300 flex justify-center shadow-inner">
+              {/* A4 Invoice Preview Box */}
+              <div className="bg-white border border-slate-400 shadow-md text-[11px] space-y-0 font-sans w-full max-w-[820px] p-6 sm:p-8" style={{ minHeight: '1080px' }}>
               {/* Header */}
               <div className="border border-slate-800 grid grid-cols-12 items-center p-2 gap-2">
                 {/* Framed ISO logo box with text "ISO CERTIFIED 9001:2015" */}
@@ -1501,6 +1501,7 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
                 </div>
               </div>
             </div>
+            </div>
           </div>
         )}
       </div>
@@ -1542,15 +1543,6 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
           </button>
         )}
       </div>
-
-      {/* WhatsApp Sharing Modal */}
-      {createdInvoice && isWhatsAppOpen && (
-        <WhatsAppSendModal
-          isOpen={isWhatsAppOpen}
-          onClose={() => setIsWhatsAppOpen(false)}
-          invoice={createdInvoice}
-        />
-      )}
 
       {/* Email Sharing Modal */}
       {createdInvoice && isEmailOpen && (

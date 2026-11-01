@@ -20,7 +20,6 @@ import {
 import { api } from '../services/api';
 import { Invoice } from '../types/index';
 import { Badge } from '../components/common/Badge';
-import { WhatsAppSendModal } from '../components/whatsapp/WhatsAppSendModal';
 import { EmailSendModal } from '../components/email/EmailSendModal';
 import { formatCurrencyWithSymbol } from '../utils/currency';
 
@@ -39,10 +38,6 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [search, setSearch] = useState('');
-
-  // WhatsApp Modal
-  const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
-  const [selectedInvoiceForWhatsApp, setSelectedInvoiceForWhatsApp] = useState<Invoice | null>(null);
 
   // Email Modal
   const [emailModalOpen, setEmailModalOpen] = useState(false);
@@ -63,11 +58,6 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
   useEffect(() => {
     fetchInvoices();
   }, [statusFilter, search]);
-
-  const handleOpenWhatsApp = (inv: Invoice) => {
-    setSelectedInvoiceForWhatsApp(inv);
-    setWhatsAppModalOpen(true);
-  };
 
   const handleOpenEmail = (inv: Invoice) => {
     setSelectedInvoiceForEmail(inv);
@@ -145,7 +135,7 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">Invoice Management</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Complete tax invoice register, lifecycle status transitions, PDF downloads, WhatsApp alerts, and Email dispatch.
+            Complete tax invoice register, lifecycle status transitions, PDF downloads, and Email dispatch.
           </p>
         </div>
         <button
@@ -334,21 +324,14 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
                         <button
                           onClick={() => onPrintInvoice(inv)}
                           title="Print Invoice"
-                          className="p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                          className="p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-red-600 cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleOpenWhatsApp(inv)}
-                          title="Send WhatsApp"
-                          className="p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-emerald-600"
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                        </button>
-                        <button
                           onClick={() => handleOpenEmail(inv)}
                           title="Send Email"
-                          className="p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-red-600"
+                          className="p-1 rounded text-slate-500 hover:bg-slate-100 hover:text-red-600 cursor-pointer"
                         >
                           <Mail className="w-3.5 h-3.5" />
                         </button>
@@ -377,14 +360,6 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
           </table>
         </div>
       </div>
-
-      {/* WhatsApp Modal */}
-      <WhatsAppSendModal
-        isOpen={whatsAppModalOpen}
-        onClose={() => setWhatsAppModalOpen(false)}
-        invoice={selectedInvoiceForWhatsApp}
-        onSuccess={() => fetchInvoices()}
-      />
 
       {/* Email Modal */}
       <EmailSendModal

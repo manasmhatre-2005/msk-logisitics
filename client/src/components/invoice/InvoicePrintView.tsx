@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, CompanySettings } from '../../types/index';
-import { Printer, ArrowLeft, Download, Mail, MessageSquare } from 'lucide-react';
+import { Printer, Download, Mail, X, ShieldCheck } from 'lucide-react';
 import { api } from '../../services/api';
 import { getCurrencySymbol, formatCurrency } from '../../utils/currency';
-import { WhatsAppSendModal } from '../whatsapp/WhatsAppSendModal';
 import { EmailSendModal } from '../email/EmailSendModal';
 import { CreditNotePrintView } from '../credit-note/CreditNotePrintView';
 import { HtBillPrintView } from '../ht-bill/HtBillPrintView';
@@ -19,7 +18,6 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
   onClose,
 }) => {
   const [settings, setSettings] = useState<CompanySettings | null>(null);
-  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
 
   useEffect(() => {
@@ -88,57 +86,60 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-100 overflow-y-auto p-2 sm:p-6 print:p-0">
-      {/* Action Bar (hidden when printed) */}
-      <div className="max-w-4xl mx-auto mb-4 no-print space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-300 shadow-sm">
-          <button
-            onClick={onClose}
-            className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 text-red-600" />
-            <span>Exit Print View</span>
-          </button>
+    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex justify-center p-0 sm:p-4 print:p-0 print:bg-white print:static">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-none sm:rounded-2xl w-full max-w-5xl h-full sm:h-[94vh] flex flex-col shadow-2xl overflow-hidden print:border-none print:shadow-none print:h-auto print:w-full">
+        {/* Top Control Bar - Sticky */}
+        <div className="bg-slate-900/95 border-b border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between no-print sticky top-0 z-10 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Tax Invoice (Forwarding / Stuffing)</span>
+            </span>
+            <span className="text-xs text-slate-300 font-mono hidden sm:inline font-bold">
+              Ref: {invoice.invoiceNumber}
+            </span>
+          </div>
 
-          {/* Quick Actions: WhatsApp, Email, Download, Print */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setIsWhatsAppOpen(true)}
-              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg shadow-2xs transition-colors"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span>WhatsApp</span>
-            </button>
-
+          {/* Quick Actions: Email, Download, Print, Close */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsEmailOpen(true)}
-              className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-3 py-1.5 rounded-lg shadow-2xs transition-colors"
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
             >
-              <Mail className="w-3.5 h-3.5" />
+              <Mail className="w-3.5 h-3.5 text-red-400" />
               <span>Email PDF</span>
             </button>
 
             <button
               onClick={handleDownloadPdf}
-              className="flex items-center gap-1.5 border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs px-3 py-1.5 rounded-lg shadow-2xs transition-colors"
+              className="flex items-center gap-1.5 border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-slate-600" />
+              <Download className="w-3.5 h-3.5 text-slate-400" />
               <span>Download PDF</span>
             </button>
 
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-1.5 rounded-lg shadow-sm transition-colors"
+              className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-1.5 rounded-lg shadow-sm transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print A4 Portrait</span>
+              <span>Print A4</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white hover:bg-slate-800 p-1.5 rounded-lg transition-colors ml-2 cursor-pointer"
+              title="Close Preview (Esc)"
+            >
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
-      </div>
 
-      {/* A4 Sheet Following Exact Client Sample Invoice (Image 3) */}
-      <div className="max-w-4xl mx-auto bg-white p-6 sm:p-8 border border-slate-400 shadow-xl print:shadow-none print:border-none print:p-2 text-slate-900 text-[11px] leading-tight font-sans">
+        {/* Scrollable Printable Document Container with Independent Vertical Scroll */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-200/70 print:p-0 print:bg-white print:overflow-visible">
+          {/* A4 Sheet Following Exact Client Sample Invoice (Image 3) */}
+          <div className="bg-white border border-slate-400 shadow-xl print:shadow-none print:border-none p-6 sm:p-8 text-slate-900 text-[11px] leading-tight font-sans w-full max-w-[820px] my-0 space-y-0" style={{ minHeight: '1080px' }}>
         {/* 1. Top Header Box: ISO Logo, Company Heading, MSK Logo */}
         <div className="border border-slate-800 grid grid-cols-12 items-center p-2 gap-2">
           {/* ISO 9001:2015 Logo Box (Left) - Framed as in Image 3 */}
@@ -488,15 +489,8 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
           </div>
         </div>
       </div>
-
-      {/* WhatsApp Modal */}
-      {isWhatsAppOpen && (
-        <WhatsAppSendModal
-          isOpen={isWhatsAppOpen}
-          onClose={() => setIsWhatsAppOpen(false)}
-          invoice={invoice}
-        />
-      )}
+      </div>
+      </div>
 
       {/* Email Modal */}
       {isEmailOpen && (

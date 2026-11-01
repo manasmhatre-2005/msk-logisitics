@@ -17,7 +17,6 @@ import { api } from '../services/api';
 import { Invoice, CompanySettings } from '../types/index';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
-import { WhatsAppSendModal } from '../components/whatsapp/WhatsAppSendModal';
 import { EmailSendModal } from '../components/email/EmailSendModal';
 import { EmptyContainerPrintView } from '../components/empty-container/EmptyContainerPrintView';
 import { HtBillPrintView } from '../components/ht-bill/HtBillPrintView';
@@ -46,7 +45,6 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
   const [recordingPay, setRecordingPay] = useState(false);
 
   // Sharing Modals State
-  const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
@@ -238,14 +236,6 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
           >
             <Printer className="w-3.5 h-3.5 text-slate-600" />
             <span>Print A4</span>
-          </button>
-
-          <button
-            onClick={() => setWhatsAppModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 px-3.5 py-2 text-xs font-bold hover:bg-emerald-100 transition-colors"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-            <span>WhatsApp</span>
           </button>
 
           <button
@@ -733,14 +723,6 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
           </div>
         </form>
       </Modal>
-
-      {/* WhatsApp Modal */}
-      <WhatsAppSendModal
-        isOpen={whatsAppModalOpen}
-        onClose={() => setWhatsAppModalOpen(false)}
-        invoice={invoice}
-        onSuccess={() => fetchInvoice()}
-      />
 
       {/* Email Modal */}
       <EmailSendModal

@@ -519,10 +519,10 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 print:p-0 print:bg-white print:static">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden print:border-none print:shadow-none print:max-h-none print:w-full">
-        {/* Top Floating Control Bar */}
-        <div className="bg-slate-900/95 border-b border-slate-800 px-6 py-3 flex items-center justify-between no-print sticky top-0 z-10 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex justify-center p-0 sm:p-4 print:p-0 print:bg-white print:static">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-none sm:rounded-2xl w-full max-w-5xl h-full sm:h-[94vh] flex flex-col shadow-2xl overflow-hidden print:border-none print:shadow-none print:h-auto print:w-full">
+        {/* Top Floating Control Bar - Sticky */}
+        <div className="bg-slate-900/95 border-b border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between no-print sticky top-0 z-10 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
               <ShieldCheck className="w-4 h-4" />
@@ -581,8 +581,8 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
           </div>
         </div>
 
-        {/* Scrollable Printable Document Container */}
-        <div className="overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-200/70 print:p-0 print:bg-white print:overflow-visible">
+        {/* Scrollable Printable Document Container with Independent Vertical Scroll */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-200/70 print:p-0 print:bg-white print:overflow-visible">
           {/* A4 Sheet with Exact Format Matching Reference Image */}
           <div
             ref={printContainerRef}

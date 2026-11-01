@@ -32,7 +32,6 @@ import { HtBillVerificationPage } from './pages/HtBillVerificationPage';
 import { EmptyContainerVerificationPage } from './pages/EmptyContainerVerificationPage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { ReportsPage } from './pages/ReportsPage';
-import { WhatsAppPage } from './pages/WhatsAppPage';
 import { UsersPage } from './pages/UsersPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
@@ -50,16 +49,6 @@ const MainApp: React.FC = () => {
   const verifyToken = verifyMatch ? verifyMatch[1] : searchParams.get('verify_cn');
   const verifyHtToken = verifyHtMatch ? verifyHtMatch[1] : (verifyGenericMatch ? verifyGenericMatch[1] : searchParams.get('verify_ht'));
   const verifyEmptyToken = verifyEmptyMatch ? verifyEmptyMatch[1] : searchParams.get('verify_empty');
-
-  if (verifyToken) {
-    return <CreditNoteVerificationPage token={verifyToken} />;
-  }
-  if (verifyHtToken) {
-    return <HtBillVerificationPage token={verifyHtToken} />;
-  }
-  if (verifyEmptyToken) {
-    return <EmptyContainerVerificationPage token={verifyEmptyToken} />;
-  }
 
   const { user, loading } = useAuth();
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
@@ -142,6 +131,62 @@ const MainApp: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Dev preview hook for automated visual testing of invoice formats (called unconditionally)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      const type = searchParams.get('preview_invoice');
+      if (type) {
+        const mockInv: any = {
+          id: 'mock-inv-1',
+          invoiceNumber: type === 'cn' ? 'CN/MSK/2026/001' : type === 'empty' ? 'MSK/EMPTY/2026/012' : type === 'ht' ? 'MSK/HT/2026/008' : 'MSK/EXP/2026/042',
+          invoiceDate: new Date().toISOString(),
+          dueDate: new Date().toISOString(),
+          billType: type === 'empty' ? 'EMPTY_CONTAINER' : type === 'ht' ? 'HT_BILL' : type === 'cn' ? 'CREDIT_NOTE' : 'FORWARDING',
+          status: 'FINALIZED',
+          currency: 'INR',
+          totalAmount: 48500,
+          subTotal: 41101.69,
+          taxAmount: 7398.31,
+          party: {
+            legalName: 'RELIANCE INDUSTRIES LTD',
+            tradeName: 'RELIANCE LOGISTICS',
+            gstin: '27AABCR1234F1Z5',
+            pan: 'AABCR1234F',
+            tan: 'MUMB12345D',
+            address: 'Maker Chambers IV, Nariman Point, Mumbai - 400021',
+            contactPerson: 'Mr. Rajesh Sharma',
+            mobile: '+91 9820012345',
+            email: 'logistics@ril.com',
+          },
+          containers: [
+            { containerNumber: 'MSKU1234567', containerSize: '40HC', containerType: 'DRY', sealNumber: 'SL-884920' },
+            { containerNumber: 'MSKU9876543', containerSize: '20GP', containerType: 'DRY', sealNumber: 'SL-884921' },
+          ],
+          items: [
+            { description: 'GROUND RENT / CFS HANDLING CHARGES', hsnSac: '996719', quantity: 2, rate: 12500, amount: 25000 },
+            { description: 'STUFFING & LASHING LABOUR CHARGES', hsnSac: '996719', quantity: 2, rate: 8050.85, amount: 16101.69 },
+          ],
+          verificationToken: 'MSK-VERIFY-2026-X89Q',
+        };
+        if (mockInv.billType === 'EMPTY_CONTAINER') setPrintableEmptyContainer(mockInv);
+        else if (mockInv.billType === 'CREDIT_NOTE') setPrintableCreditNote(mockInv);
+        else if (mockInv.billType === 'HT_BILL') setPrintableHtInvoice(mockInv);
+        else setPrintableInvoice(mockInv);
+      }
+    }
+  }, []);
+
+  // Support public read-only verification of Credit Notes & H & T Bills via QR code scan
+  if (verifyToken) {
+    return <CreditNoteVerificationPage token={verifyToken} />;
+  }
+  if (verifyHtToken) {
+    return <HtBillVerificationPage token={verifyHtToken} />;
+  }
+  if (verifyEmptyToken) {
+    return <EmptyContainerVerificationPage token={verifyEmptyToken} />;
+  }
 
   if (loading) {
     return (
@@ -247,10 +292,6 @@ const MainApp: React.FC = () => {
                   setCurrentTab('invoices');
                 }}
                 onPrintInvoice={(inv) => handlePrintInvoice(inv)}
-                onWhatsAppInvoice={(inv) => {
-                  setSelectedInvoiceId(inv.id);
-                  setCurrentTab('invoices');
-                }}
                 onNavigateTab={(tab) => {
                   setCurrentTab(tab);
                   setSelectedPartyId(null);
@@ -336,9 +377,6 @@ const MainApp: React.FC = () => {
 
           {/* Reports */}
           {currentTab === 'reports' && <ReportsPage />}
-
-          {/* WhatsApp Integration (Admin & Ops) */}
-          {currentTab === 'whatsapp' && <WhatsAppPage />}
 
           {/* Users & Roles (ADMIN ONLY) */}
           {currentTab === 'users' && user.role === 'ADMIN' && <UsersPage />}

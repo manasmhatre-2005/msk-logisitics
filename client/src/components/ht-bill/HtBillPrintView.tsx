@@ -11,11 +11,9 @@ import {
   ShieldCheck,
   AlertCircle,
   Mail,
-  MessageSquare,
 } from 'lucide-react';
 import { Invoice } from '../../types/index';
 import { formatCurrency, numberToIndianWords } from '../../utils/currency';
-import { WhatsAppSendModal } from '../whatsapp/WhatsAppSendModal';
 import { EmailSendModal } from '../email/EmailSendModal';
 import { api } from '../../services/api';
 
@@ -36,7 +34,6 @@ export const HtBillPrintView: React.FC<HtBillPrintViewProps> = ({
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedUrl, setCopiedUrl] = useState(false);
-  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const printContainerRef = useRef<HTMLDivElement>(null);
 
@@ -538,79 +535,76 @@ export const HtBillPrintView: React.FC<HtBillPrintViewProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 print:p-0 print:bg-white print:static">
-      {/* Top Action Bar (hidden on print) */}
-      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-slate-900/90 text-white px-4 py-2 rounded-full shadow-2xl border border-slate-700 text-xs no-print">
-        <span className="font-semibold text-slate-300 flex items-center gap-1.5 pr-2 border-r border-slate-700">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>H & T Tax Invoice</span>
-        </span>
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-white font-medium transition-colors"
-          title="Print Invoice"
-        >
-          <Printer className="w-3.5 h-3.5" />
-          <span>Print</span>
-        </button>
-        <button
-          onClick={handleDownloadPdf}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 hover:bg-red-500 text-white font-medium transition-colors"
-          title="Download PDF"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Download PDF</span>
-        </button>
-        <button
-          onClick={() => setIsWhatsAppOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors"
-          title="Share via WhatsApp"
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>WhatsApp</span>
-        </button>
-        <button
-          onClick={() => setIsEmailOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors"
-          title="Send via Email"
-        >
-          <Mail className="w-3.5 h-3.5" />
-          <span>Email</span>
-        </button>
-        <button
-          onClick={handleCopyVerifyUrl}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
-          title="Copy QR Verification Link"
-        >
-          {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-          <span>{copiedUrl ? 'Copied' : 'Copy QR Link'}</span>
-        </button>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors ml-1"
-          title="Close (Esc)"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex justify-center p-0 sm:p-4 print:p-0 print:bg-white print:static">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-none sm:rounded-2xl w-full max-w-5xl h-full sm:h-[94vh] flex flex-col shadow-2xl overflow-hidden print:border-none print:shadow-none print:h-auto print:w-full">
+        {/* Top Control Bar - Sticky */}
+        <div className="bg-slate-900/95 border-b border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between no-print sticky top-0 z-10 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <ShieldCheck className="w-4 h-4" />
+              <span>H & T Tax Invoice</span>
+            </span>
+            <span className="text-xs text-slate-300 font-mono hidden sm:inline font-bold">
+              Ref: {invoice.invoiceNumber}
+            </span>
+          </div>
 
-      {/* Main A4 Document Sheet */}
-      <div
-        ref={printContainerRef}
-        className="bg-white text-slate-900 border border-slate-300 shadow-2xl rounded-xs w-full max-w-[820px] p-6 sm:p-7 text-[11px] leading-tight font-sans print:shadow-none print:border-none print:p-4 print:w-full print:max-w-none my-12 print:my-0 space-y-3"
-        style={{ minHeight: '1050px' }}
-      >
-        {sheetInner}
-      </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyVerifyUrl}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition-colors cursor-pointer"
+              title="Copy QR Verification Link"
+            >
+              {copiedUrl ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedUrl ? 'Copied' : 'Copy Link'}</span>
+            </button>
 
-      {/* WhatsApp Sharing Modal */}
-      {isWhatsAppOpen && (
-        <WhatsAppSendModal
-          isOpen={isWhatsAppOpen}
-          onClose={() => setIsWhatsAppOpen(false)}
-          invoice={invoice}
-        />
-      )}
+            <button
+              onClick={() => setIsEmailOpen(true)}
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              <Mail className="w-3.5 h-3.5 text-blue-400" />
+              <span>Email PDF</span>
+            </button>
+
+            <button
+              onClick={handleDownloadPdf}
+              className="flex items-center gap-1.5 border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-400" />
+              <span>Download PDF</span>
+            </button>
+
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-1.5 rounded-lg shadow-sm transition-colors cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print A4</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white hover:bg-slate-800 p-1.5 rounded-lg transition-colors ml-2 cursor-pointer"
+              title="Close Preview (Esc)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Printable Document Container with Independent Vertical Scroll */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-200/70 print:p-0 print:bg-white print:overflow-visible">
+          {/* Main A4 Document Sheet */}
+          <div
+            ref={printContainerRef}
+            className="bg-white text-slate-900 border border-slate-300 shadow-xl rounded-none w-full max-w-[820px] p-6 sm:p-8 text-[11px] leading-tight font-sans print:shadow-none print:border-none print:p-0 print:max-w-none my-0 space-y-3"
+            style={{ minHeight: '1080px' }}
+          >
+            {sheetInner}
+          </div>
+        </div>
+      </div>
 
       {/* Email Sharing Modal */}
       {isEmailOpen && (
