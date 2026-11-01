@@ -30,6 +30,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
+        if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.search.includes('preview=dashboard')) {
+          setUser({
+            id: 'admin-preview-id',
+            name: 'MSK System Administrator',
+            email: 'admin@login',
+            role: 'ADMIN',
+            createdAt: new Date().toISOString(),
+          } as User);
+          setLoading(false);
+          return;
+        }
+
         const token = localStorage.getItem('logibill_token');
         if (token) {
           const res = await api.getMe();

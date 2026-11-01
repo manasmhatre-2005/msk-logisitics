@@ -113,167 +113,217 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-6 pb-12 font-sans">
       {/* ========================================================
-          IMAGE 1 EXACT HERO BANNER WITH SEAMLESS IMAGE BLENDING
+          APPROVED MSK HERO BANNER — STABLE SCALE-INDEPENDENT RESPONSIVE SPLIT
           ======================================================== */}
-      <div
-        className="relative overflow-hidden rounded-[24px] border border-[#D8E2ED] shadow-xl shadow-slate-200/50 min-h-[370px] sm:min-h-[390px] lg:min-h-[415px] flex flex-col justify-between p-5 sm:p-7 lg:p-8 select-none"
-        style={{
-          background: 'linear-gradient(102deg, #FFFFFF 0%, #FFFFFF 25%, #F5F8FC 38%, #EAF2F9 48%, #13273D 65%, #0B1B30 82%, #071526 100%)',
-        }}
-      >
-        {/* ATMOSPHERIC BACKGROUND LIGHTING & SMOKE ACCENTS */}
-        <div
-          className="absolute inset-0 pointer-events-none z-0"
-          style={{
-            backgroundImage: `
-              radial-gradient(circle at 20% 30%, rgba(61, 102, 137, 0.06) 0%, transparent 55%),
-              radial-gradient(circle at 70% 30%, rgba(22, 139, 255, 0.12) 0%, transparent 60%),
-              radial-gradient(circle at 85% 75%, rgba(245, 34, 53, 0.15) 0%, transparent 50%)
-            `,
-          }}
-        />
+      <div className="relative overflow-hidden rounded-[24px] border border-[#D8E2ED] shadow-xl shadow-slate-200/50 bg-white flex flex-col lg:flex-row items-stretch select-none">
+        
+        {/* LEFT PANEL: BRANDING, MAP BACKDROP, 4 FEATURES, BUTTON & SEARCH */}
+        <div className="relative z-10 flex-1 min-w-0 p-5 sm:p-7 lg:p-8 flex flex-col justify-between overflow-hidden">
+          {/* Subtle World Map Vector Background with Curved Route Arcs & Red Pins */}
+          <div className="absolute inset-0 pointer-events-none opacity-35 z-0 overflow-hidden">
+            <svg
+              className="w-full h-full"
+              viewBox="0 0 600 320"
+              preserveAspectRatio="xMidYMid slice"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* World Map Dotted Continents Silhouette */}
+              <g fill="#A0AEC0" opacity="0.45">
+                {/* North America */}
+                <circle cx="100" cy="70" r="2" /><circle cx="115" cy="65" r="2.5" /><circle cx="130" cy="60" r="2" />
+                <circle cx="90" cy="85" r="2.5" /><circle cx="105" cy="80" r="3" /><circle cx="120" cy="75" r="2.5" /><circle cx="135" cy="70" r="2" />
+                <circle cx="95" cy="100" r="2" /><circle cx="110" cy="95" r="2.5" /><circle cx="125" cy="90" r="2.5" /><circle cx="140" cy="85" r="2" />
+                <circle cx="115" cy="110" r="2" /><circle cx="130" cy="105" r="2" /><circle cx="145" cy="100" r="2" />
+                {/* South America */}
+                <circle cx="145" cy="150" r="2" /><circle cx="155" cy="160" r="2.5" /><circle cx="165" cy="170" r="2.5" />
+                <circle cx="150" cy="185" r="2.5" /><circle cx="160" cy="195" r="2" /><circle cx="170" cy="205" r="2" />
+                <circle cx="155" cy="220" r="1.8" /><circle cx="165" cy="235" r="1.8" />
+                {/* Europe */}
+                <circle cx="280" cy="65" r="2.5" /><circle cx="295" cy="60" r="2.5" /><circle cx="310" cy="55" r="2" />
+                <circle cx="275" cy="80" r="2.5" /><circle cx="290" cy="75" r="3" /><circle cx="305" cy="70" r="2.5" />
+                {/* Africa */}
+                <circle cx="280" cy="110" r="2" /><circle cx="295" cy="115" r="2.5" /><circle cx="310" cy="120" r="2.5" />
+                <circle cx="285" cy="135" r="2.5" /><circle cx="300" cy="140" r="2.5" /><circle cx="315" cy="145" r="2" />
+                <circle cx="295" cy="165" r="2" /><circle cx="310" cy="170" r="2" />
+                {/* Asia & Middle East */}
+                <circle cx="330" cy="65" r="2.5" /><circle cx="350" cy="60" r="3" /><circle cx="370" cy="60" r="2.5" /><circle cx="390" cy="65" r="2" />
+                <circle cx="340" cy="85" r="2.5" /><circle cx="360" cy="80" r="3" /><circle cx="380" cy="80" r="3" /><circle cx="400" cy="85" r="2.5" /><circle cx="420" cy="90" r="2" />
+                <circle cx="355" cy="105" r="2.5" /><circle cx="375" cy="100" r="3" /><circle cx="395" cy="100" r="2.5" /><circle cx="415" cy="105" r="2" />
+                {/* India Subcontinent */}
+                <circle cx="365" cy="115" r="3" /><circle cx="370" cy="125" r="2.5" /><circle cx="372" cy="135" r="2" />
+                {/* East Asia & Australia */}
+                <circle cx="435" cy="95" r="2.5" /><circle cx="450" cy="105" r="2" />
+                <circle cx="430" cy="180" r="2.5" /><circle cx="445" cy="190" r="2.5" /><circle cx="460" cy="185" r="2" />
+              </g>
 
-        {/* FAINT HARBOR CRANE & SILKY ATMOSPHERIC WAVES ON LEFT */}
-        <div className="absolute left-[20%] top-0 bottom-0 w-[32%] opacity-20 pointer-events-none z-0 hidden lg:block">
-          <svg className="w-full h-full" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-            {/* Harbor Crane Silhouette */}
-            <path d="M 220 280 L 260 90 L 320 90 L 350 280" stroke="#168BFF" strokeWidth="2.5" strokeOpacity="0.4" />
-            <path d="M 235 200 L 335 200" stroke="#168BFF" strokeWidth="2" strokeOpacity="0.3" />
-            <path d="M 245 140 L 305 140" stroke="#168BFF" strokeWidth="2" strokeOpacity="0.3" />
-            <path d="M 180 90 L 380 90" stroke="#168BFF" strokeWidth="3" strokeOpacity="0.45" />
-            <path d="M 180 90 L 260 30 L 320 90" stroke="#168BFF" strokeWidth="2" strokeOpacity="0.35" />
-            <line x1="285" y1="30" x2="285" y2="15" stroke="#F5222D" strokeWidth="3" />
-            <circle cx="285" cy="12" r="3" fill="#F5222D" />
-            {/* Elegant Silk Wave Ribbons */}
-            <path d="M 20 180 C 120 120, 220 220, 380 150" stroke="#00D6B0" strokeWidth="1.5" strokeOpacity="0.3" fill="none" />
-            <path d="M 60 210 C 160 160, 260 250, 400 180" stroke="#168BFF" strokeWidth="1.5" strokeOpacity="0.25" fill="none" />
-          </svg>
+              {/* Connected Curved Flight & Shipping Routes */}
+              <path
+                d="M 120 75 Q 200 30 290 75 T 370 125"
+                stroke="#CBD5E1"
+                strokeWidth="1.5"
+                strokeDasharray="4 4"
+                fill="none"
+              />
+              <path
+                d="M 290 75 Q 340 45 400 85 T 445 190"
+                stroke="#CBD5E1"
+                strokeWidth="1.5"
+                strokeDasharray="4 4"
+                fill="none"
+              />
+              <path
+                d="M 155 160 Q 230 140 370 125"
+                stroke="#CBD5E1"
+                strokeWidth="1.2"
+                strokeDasharray="3 3"
+                fill="none"
+              />
+
+              {/* Red Location Pins with Rings */}
+              {/* North America */}
+              <circle cx="120" cy="75" r="3.5" fill="#F5222D" />
+              <circle cx="120" cy="75" r="6" stroke="#F5222D" strokeWidth="1" strokeOpacity="0.4" />
+              {/* Europe */}
+              <circle cx="290" cy="75" r="3.5" fill="#F5222D" />
+              <circle cx="290" cy="75" r="6" stroke="#F5222D" strokeWidth="1" strokeOpacity="0.4" />
+              {/* India (Hub) */}
+              <circle cx="370" cy="125" r="4.5" fill="#F5222D" />
+              <circle cx="370" cy="125" r="8" stroke="#F5222D" strokeWidth="1.5" strokeOpacity="0.5" />
+              {/* East Asia */}
+              <circle cx="400" cy="85" r="3.5" fill="#F5222D" />
+              <circle cx="400" cy="85" r="6" stroke="#F5222D" strokeWidth="1" strokeOpacity="0.4" />
+              {/* Australia */}
+              <circle cx="445" cy="190" r="3.5" fill="#F5222D" />
+              <circle cx="445" cy="190" r="6" stroke="#F5222D" strokeWidth="1" strokeOpacity="0.4" />
+            </svg>
+          </div>
+
+          {/* TOP LEVEL CONTENT: LEFT HEADING & TAGLINE */}
+          <div className="relative z-10 flex flex-col items-start justify-between">
+            <div className="space-y-1 max-w-[480px] lg:max-w-[540px]">
+              {/* First Line: WELCOME TO with red dash */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.28em] text-[#0B1B30]">
+                  WELCOME TO
+                </span>
+                <span className="w-5 h-[2px] bg-[#F5222D] rounded-full inline-block" />
+              </div>
+
+              {/* Main Heading: MSK LOGISTIC SOLUTION */}
+              <h1 className="text-2xl sm:text-3xl lg:text-[36px] xl:text-[40px] font-black tracking-tight text-[#0B1B30] uppercase leading-[1.06] drop-shadow-xs">
+                <span className="text-[#F5222D]">MSK</span> LOGISTIC<br className="hidden sm:inline" /> SOLUTION
+              </h1>
+
+              {/* Tagline */}
+              <p className="text-[11px] sm:text-xs font-bold text-[#4B637C] tracking-wide pt-0.5">
+                Efficient Logistics · Accurate Billing · Trusted Service
+              </p>
+            </div>
+          </div>
+
+          {/* MIDDLE LEVEL: FOUR HORIZONTALLY ALIGNED FEATURE CARDS */}
+          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 my-3.5 sm:my-4 max-w-[460px] sm:max-w-[540px] lg:max-w-[580px]">
+            {/* Feature 1: Container Management (Red) */}
+            <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-2.5 px-2.5 sm:px-3 shadow-xs border border-[#D8E2ED] flex items-center gap-2 sm:gap-2.5 hover:shadow-md hover:border-red-200 transition-all group">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#F5222D] flex items-center justify-center shrink-0 shadow-xs shadow-red-500/30 group-hover:scale-105 transition-transform">
+                <Box className="w-4 h-4 text-white stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold text-[#14263D] block tracking-tight leading-tight">
+                  Container<br />Management
+                </span>
+                <div className="w-5 h-[2px] bg-[#F5222D] mt-1 rounded-full shadow-[0_0_6px_#F5222D]" />
+              </div>
+            </div>
+
+            {/* Feature 2: Job & Shipment Tracking (Blue) */}
+            <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-2.5 px-2.5 sm:px-3 shadow-xs border border-[#D8E2ED] flex items-center gap-2 sm:gap-2.5 hover:shadow-md hover:border-blue-200 transition-all group">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#168BFF] flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/30 group-hover:scale-105 transition-transform">
+                <Ship className="w-4 h-4 text-white stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold text-[#14263D] block tracking-tight leading-tight">
+                  Job & Shipment<br />Tracking
+                </span>
+                <div className="w-5 h-[2px] bg-[#168BFF] mt-1 rounded-full shadow-[0_0_6px_#168BFF]" />
+              </div>
+            </div>
+
+            {/* Feature 3: GST Compliant Invoicing (Teal-Green) */}
+            <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-2.5 px-2.5 sm:px-3 shadow-xs border border-[#D8E2ED] flex items-center gap-2 sm:gap-2.5 hover:shadow-md hover:border-teal-200 transition-all group">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#00D6B0] flex items-center justify-center shrink-0 shadow-xs shadow-teal-500/30 group-hover:scale-105 transition-transform">
+                <FileText className="w-4 h-4 text-white stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold text-[#14263D] block tracking-tight leading-tight">
+                  GST Compliant<br />Invoicing
+                </span>
+                <div className="w-5 h-[2px] bg-[#00D6B0] mt-1 rounded-full shadow-[0_0_6px_#00D6B0]" />
+              </div>
+            </div>
+
+            {/* Feature 4: Complete Logistics Solution (Orange) */}
+            <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-2.5 px-2.5 sm:px-3 shadow-xs border border-[#D8E2ED] flex items-center gap-2 sm:gap-2.5 hover:shadow-md hover:border-orange-200 transition-all group">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#FF941F] flex items-center justify-center shrink-0 shadow-xs shadow-orange-500/30 group-hover:scale-105 transition-transform">
+                <Truck className="w-4 h-4 text-white stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-bold text-[#14263D] block tracking-tight leading-tight">
+                  Complete<br />Logistics Solution
+                </span>
+                <div className="w-5 h-[2px] bg-[#FF941F] mt-1 rounded-full shadow-[0_0_6px_#FF941F]" />
+              </div>
+            </div>
+          </div>
+
+          {/* BOTTOM LEVEL: CREATE TAX INVOICE BUTTON + WHITE SEARCH FIELD */}
+          <div className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-[460px] sm:max-w-[540px] pt-1">
+            {/* Red Create Tax Invoice Button */}
+            <button
+              onClick={onOpenInvoiceWizard}
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-[#F5222D] hover:bg-[#d91b25] active:scale-95 px-4 sm:px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-red-500/25 transition-all hover:scale-[1.01] shrink-0 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" />
+              <span>+ Create Tax Invoice</span>
+            </button>
+
+            {/* Clean Search Field with Thin Blue Border */}
+            <div className="relative flex-1">
+              <form onSubmit={handleBannerSearchSubmit}>
+                <div className="relative flex items-center">
+                  <Search className="w-3.5 h-3.5 text-[#F5222D] absolute left-3 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={bannerSearch}
+                    onChange={(e) => setBannerSearch(e.target.value)}
+                    onClick={() => onOpenSearch && onOpenSearch()}
+                    placeholder="Search parties, containers, invoices, jobs..."
+                    className="w-full rounded-xl bg-white border border-[#D8E2ED] pl-9 pr-16 py-2 text-xs text-[#14263D] placeholder-[#62758A] focus:outline-hidden focus:border-[#168BFF] focus:ring-1 focus:ring-[#168BFF] transition-all shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onOpenSearch && onOpenSearch()}
+                    className="absolute right-1.5 px-2 py-0.5 rounded-md bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#62758A] text-[10px] font-mono border border-[#D8E2ED] transition-colors font-bold cursor-pointer"
+                  >
+                    Ctrl K
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
 
-        {/* HIGH-QUALITY TRANSPORT MONTAGE ON RIGHT (AIRPLANE, SHIP, TRAIN, REACH STACKER, TRUCK) WITH SEAMLESS BLENDING */}
-        <div className="absolute right-0 bottom-0 top-0 w-full sm:w-[58%] lg:w-[54%] xl:w-[52%] 2xl:w-[50%] pointer-events-none z-1 flex items-end justify-end overflow-hidden">
+        {/* RIGHT PANEL: SCALE-INDEPENDENT HIGH-DEFINITION LOGISTICS MONTAGE & SLOGAN */}
+        <div className="relative w-full lg:w-[50%] xl:w-[52%] 2xl:w-[54%] shrink-0 flex items-center justify-end overflow-hidden aspect-[1.85/1] lg:aspect-auto self-stretch min-h-[220px] sm:min-h-[260px] lg:min-h-[300px]">
           <img
-            src="/images/logistics-hero-seamless.png"
-            alt="Multimodal Logistics Fleet"
-            className="w-full h-full object-cover object-right-bottom"
+            src="/images/dashboard-hero-right-hd.png"
+            alt="Multimodal Logistics Fleet & Moving Business Forward"
+            className="w-full h-full object-cover object-left-center select-none"
             style={{
               imageRendering: '-webkit-optimize-contrast',
             }}
           />
-        </div>
-
-        {/* TOP LEVEL CONTENT: LEFT HEADING & TAGLINE */}
-        <div className="relative z-20 flex flex-col items-start justify-between">
-          <div className="space-y-1 max-w-[480px] lg:max-w-[520px]">
-            {/* First Line: WELCOME TO with red dash */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.28em] text-[#0B1B30]">
-                WELCOME TO
-              </span>
-              <span className="w-5 h-[2px] bg-[#F5222D] rounded-full inline-block" />
-            </div>
-
-            {/* Main Heading: MSK LOGISTIC SOLUTION */}
-            <h1 className="text-2xl sm:text-3xl lg:text-[38px] xl:text-[42px] font-black tracking-tight text-[#0B1B30] uppercase leading-[1.08] drop-shadow-xs">
-              <span className="text-[#F5222D]">MSK</span> LOGISTIC<br className="hidden sm:inline" /> SOLUTION
-            </h1>
-
-            {/* Tagline */}
-            <p className="text-[11px] sm:text-xs font-bold text-[#3B546E] tracking-wide pt-0.5">
-              Efficient Logistics · Accurate Billing · Trusted Service
-            </p>
-          </div>
-        </div>
-
-        {/* MIDDLE LEVEL: FOUR HORIZONTALLY ALIGNED FEATURE CARDS (COMPACT TWO-LINE FORMAT MATCHING IMAGE 1) */}
-        <div className="relative z-20 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 my-3.5 sm:my-4 max-w-[460px] sm:max-w-[540px] lg:max-w-[580px]">
-          {/* Feature 1: Container Management (Red) */}
-          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-2.5 px-2.5 sm:px-3 shadow-xs border border-[#D8E2ED] flex items-center gap-2 sm:gap-2.5 hover:shadow-md hover:border-red-200 transition-all group">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#F5222D] flex items-center justify-center shrink-0 shadow-xs shadow-red-500/30 group-hover:scale-105 transition-transform">
-              <Box className="w-4 h-4 text-white stroke-[2.2]" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-bold text-[#14263D] block tracking-tight leading-tight">
-                Container<br />Management
-              </span>
-              <div className="w-5 h-[2px] bg-[#F5222D] mt-1 rounded-full shadow-[0_0_6px_#F5222D]" />
-            </div>
-          </div>
-
-          {/* Feature 2: Job & Shipment Tracking (Blue) */}
-          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-2.5 px-2.5 sm:px-3 shadow-xs border border-[#D8E2ED] flex items-center gap-2 sm:gap-2.5 hover:shadow-md hover:border-blue-200 transition-all group">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#168BFF] flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/30 group-hover:scale-105 transition-transform">
-              <Ship className="w-4 h-4 text-white stroke-[2.2]" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-bold text-[#14263D] block tracking-tight leading-tight">
-                Job & Shipment<br />Tracking
-              </span>
-              <div className="w-5 h-[2px] bg-[#168BFF] mt-1 rounded-full shadow-[0_0_6px_#168BFF]" />
-            </div>
-          </div>
-
-          {/* Feature 3: GST Compliant Invoicing (Teal-Green) */}
-          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-2.5 px-2.5 sm:px-3 shadow-xs border border-[#D8E2ED] flex items-center gap-2 sm:gap-2.5 hover:shadow-md hover:border-teal-200 transition-all group">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#00D6B0] flex items-center justify-center shrink-0 shadow-xs shadow-teal-500/30 group-hover:scale-105 transition-transform">
-              <FileText className="w-4 h-4 text-white stroke-[2.2]" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-bold text-[#14263D] block tracking-tight leading-tight">
-                GST Compliant<br />Invoicing
-              </span>
-              <div className="w-5 h-[2px] bg-[#00D6B0] mt-1 rounded-full shadow-[0_0_6px_#00D6B0]" />
-            </div>
-          </div>
-
-          {/* Feature 4: Complete Logistics Solution (Orange) */}
-          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl p-2 sm:p-2.5 px-2.5 sm:px-3 shadow-xs border border-[#D8E2ED] flex items-center gap-2 sm:gap-2.5 hover:shadow-md hover:border-orange-200 transition-all group">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#FF941F] flex items-center justify-center shrink-0 shadow-xs shadow-orange-500/30 group-hover:scale-105 transition-transform">
-              <Truck className="w-4 h-4 text-white stroke-[2.2]" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] sm:text-[11px] font-bold text-[#14263D] block tracking-tight leading-tight">
-                Complete<br />Logistics Solution
-              </span>
-              <div className="w-5 h-[2px] bg-[#FF941F] mt-1 rounded-full shadow-[0_0_6px_#FF941F]" />
-            </div>
-          </div>
-        </div>
-
-        {/* BOTTOM LEVEL: CREATE TAX INVOICE BUTTON + WHITE SEARCH FIELD */}
-        <div className="relative z-20 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-[460px] sm:max-w-[540px] pt-1">
-          {/* Red Create Tax Invoice Button */}
-          <button
-            onClick={onOpenInvoiceWizard}
-            className="flex items-center justify-center gap-1.5 rounded-xl bg-[#F5222D] hover:bg-[#d91b25] active:scale-95 px-4 sm:px-5 py-2.5 text-xs font-bold text-white shadow-md shadow-red-500/25 transition-all hover:scale-[1.01] shrink-0 cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>+ Create Tax Invoice</span>
-          </button>
-
-          {/* Clean Search Field with Thin Blue Border */}
-          <div className="relative flex-1">
-            <form onSubmit={handleBannerSearchSubmit}>
-              <div className="relative flex items-center">
-                <Search className="w-3.5 h-3.5 text-[#F5222D] absolute left-3 pointer-events-none" />
-                <input
-                  type="text"
-                  value={bannerSearch}
-                  onChange={(e) => setBannerSearch(e.target.value)}
-                  onClick={() => onOpenSearch && onOpenSearch()}
-                  placeholder="Search parties, containers, invoices, jobs..."
-                  className="w-full rounded-xl bg-white border border-[#D8E2ED] pl-9 pr-16 py-2 text-xs text-[#14263D] placeholder-[#62758A] focus:outline-hidden focus:border-[#168BFF] focus:ring-1 focus:ring-[#168BFF] transition-all shadow-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => onOpenSearch && onOpenSearch()}
-                  className="absolute right-1.5 px-2 py-0.5 rounded-md bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#62758A] text-[10px] font-mono border border-[#D8E2ED] transition-colors font-bold cursor-pointer"
-                >
-                  Ctrl K
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       </div>
 
