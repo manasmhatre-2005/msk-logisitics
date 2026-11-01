@@ -19,6 +19,7 @@ interface CreditNotePrintViewProps {
   isOpen: boolean;
   onClose: () => void;
   companySettings?: any;
+  displayMode?: 'modal' | 'inline';
 }
 
 export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
@@ -26,6 +27,7 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
   isOpen,
   onClose,
   companySettings,
+  displayMode = 'modal',
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedUrl, setCopiedUrl] = useState(false);
@@ -127,79 +129,10 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
           },
         ];
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 print:p-0 print:bg-white print:overflow-visible">
-      {/* Container Card */}
-      <div className="relative bg-slate-100 rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-300 flex flex-col max-h-[96vh] overflow-hidden print:max-w-none print:w-full print:max-h-none print:shadow-none print:border-none print:rounded-none">
-        
-        {/* Top Floating Control Bar (Hidden on print) */}
-        <div className="flex items-center justify-between px-6 py-3.5 bg-slate-900 text-white shrink-0 print:hidden">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-red-600 text-white tracking-wide">
-              CREDIT NOTE
-            </span>
-            <span className="text-sm font-semibold text-slate-200 font-mono">
-              {invoice.invoiceNumber}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {verifyToken && (
-              <button
-                onClick={handleCopyLink}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700"
-                title="Copy Verification Link"
-              >
-                {copiedUrl ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copy Verify URL</span>
-                  </>
-                )}
-              </button>
-            )}
-
-            <button
-              onClick={handleDownloadPdf}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-100 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700 shadow-xs"
-            >
-              <Download className="w-3.5 h-3.5 text-red-400" />
-              <span>Download PDF</span>
-            </button>
-
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print A4</span>
-            </button>
-
-            <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-white hover:bg-slate-800 p-1.5 rounded-lg transition-colors ml-2"
-              title="Close (Esc)"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Scrollable Printable Document Container */}
-        <div className="overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-200/70 print:p-0 print:bg-white print:overflow-visible">
-          {/* A4 Sheet with Exact Format Matching Reference Image */}
-          <div
-            ref={printContainerRef}
-            className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[794px] p-6 text-[11px] leading-tight print:shadow-none print:border-none print:p-2 print:max-w-none"
-            style={{ minHeight: '1080px' }}
-          >
-            {/* 1. Header Box with QR, Company Details, Logos */}
-            <div className="border border-slate-800 grid grid-cols-12 divide-x divide-slate-300">
+  const sheetInner = (
+    <>
+      {/* 1. Header Box with QR, Company Details, Logos */}
+      <div className="border border-slate-800 grid grid-cols-12 divide-x divide-slate-300">
               {/* QR Code (Col 1-2: Width 16%) */}
               <div className="col-span-2 p-2 flex flex-col items-center justify-center text-center bg-slate-50/50">
                 <span className="text-[8px] font-bold uppercase tracking-wider text-slate-700 leading-tight mb-1">
@@ -571,6 +504,92 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
                 Digitally generated and verified document. Original certificate token: <strong className="font-mono text-slate-600">{verifyToken || 'N/A'}</strong>
               </span>
             </div>
+    </>
+  );
+
+  if (displayMode === 'inline') {
+    return (
+      <div
+        ref={printContainerRef}
+        className="bg-white text-slate-900 border border-slate-300 shadow-sm rounded-xl w-full p-6 sm:p-7 text-[11px] leading-tight font-sans space-y-3"
+      >
+        {sheetInner}
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 print:p-0 print:bg-white print:static">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden print:border-none print:shadow-none print:max-h-none print:w-full">
+        {/* Top Floating Control Bar */}
+        <div className="bg-slate-900/95 border-b border-slate-800 px-6 py-3 flex items-center justify-between no-print sticky top-0 z-10 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Official Credit Note (Rule 53)</span>
+            </span>
+            <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+              Ref: {invoice.invoiceNumber}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {verifyToken && (
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700"
+                title="Copy Verification Link"
+              >
+                {copiedUrl ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy Verify URL</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              onClick={handleDownloadPdf}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-100 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700 shadow-xs"
+            >
+              <Download className="w-3.5 h-3.5 text-red-400" />
+              <span>Download PDF</span>
+            </button>
+
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print A4</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white hover:bg-slate-800 p-1.5 rounded-lg transition-colors ml-2"
+              title="Close (Esc)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable Printable Document Container */}
+        <div className="overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-200/70 print:p-0 print:bg-white print:overflow-visible">
+          {/* A4 Sheet with Exact Format Matching Reference Image */}
+          <div
+            ref={printContainerRef}
+            className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[794px] p-6 text-[11px] leading-tight print:shadow-none print:border-none print:p-2 print:max-w-none"
+            style={{ minHeight: '1080px' }}
+          >
+            {sheetInner}
           </div>
         </div>
       </div>

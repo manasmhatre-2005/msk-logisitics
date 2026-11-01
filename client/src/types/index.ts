@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'BILLING' | 'OPERATIONS' | 'ACCOUNTANT' | 'VIEWER';
+export type UserRole = 'ADMIN' | 'ACCOUNT_MANAGER' | 'BILLING' | 'OPERATIONS' | 'ACCOUNTANT' | 'VIEWER';
 
 export interface User {
   id: string;
@@ -237,6 +237,23 @@ export interface Job {
   _count?: { containers: number; invoices: number };
 }
 
+export const CONTAINER_SIZES = ['20 FT', '40 FT'] as const;
+export type ContainerSizeType = (typeof CONTAINER_SIZES)[number];
+
+export const CONTAINER_TYPES = [
+  'HAZ',
+  'HC',
+  'DV',
+  'Open Top',
+  'ING/OT',
+  'OG',
+  'RF',
+  'FR',
+  'BBK',
+  'Hard Top',
+] as const;
+export type ContainerSpecType = (typeof CONTAINER_TYPES)[number];
+
 export interface Container {
   id: string;
   containerNumber: string;
@@ -374,6 +391,7 @@ export interface Invoice {
   grandTotal: number;
   amountInWords?: string;
   paidAmount: number;
+  tdsAmount?: number;
   balanceAmount: number;
   balance?: number;
   terms?: string;
@@ -396,6 +414,9 @@ export interface Payment {
   partyId: string;
   party?: { legalName: string; gstin: string };
   amount: number;
+  tdsRate?: number;
+  tdsAmount?: number;
+  batchId?: string;
   currency?: Currency;
   paymentDate: string;
   paymentMode: string;
@@ -403,6 +424,21 @@ export interface Payment {
   notes?: string;
   recordedBy?: string;
   createdAt: string;
+}
+
+export interface PartyOutstandingSummary {
+  partyId: string;
+  legalName: string;
+  tradeName?: string;
+  gstin: string;
+  state?: string;
+  totalInvoiced: number;
+  totalCreditNotes: number;
+  totalPaid: number;
+  totalTds: number;
+  netOutstanding: number;
+  invoiceCount: number;
+  invoices: Invoice[];
 }
 
 export interface WhatsAppMessage {

@@ -169,6 +169,11 @@ model Job {
 
   containers     Container[]
   invoices       Invoice[]
+
+  @@index([partyId])
+  @@index([exporterId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Container {
@@ -202,6 +207,11 @@ model Container {
 
   invoiceContainers    InvoiceContainer[]
   invoiceItems         InvoiceItem[]
+
+  @@index([partyId])
+  @@index([jobId])
+  @@index([exporterId])
+  @@index([status])
 }
 
 model ChargeMaster {
@@ -257,6 +267,7 @@ model Invoice {
   grandTotal     Float              @default(0)
   amountInWords  String?
   paidAmount     Float              @default(0)
+  tdsAmount      Float              @default(0)
   balanceAmount  Float              @default(0)
   terms          String?
   notes          String?
@@ -277,11 +288,20 @@ model Invoice {
   mblHbl                 String?
   portOfLoading          String?
   portOfDischarge        String?
+  idempotencyKey         String?            @unique
 
   containers     InvoiceContainer[]
   items          InvoiceItem[]
   payments       Payment[]
   whatsAppMessages WhatsAppMessage[]
+
+  @@index([partyId])
+  @@index([invoiceDate])
+  @@index([status])
+  @@index([billType])
+  @@index([createdAt])
+  @@index([partyId, invoiceDate])
+  @@index([dueDate])
 }
 
 model InvoiceContainer {
@@ -303,6 +323,10 @@ model InvoiceContainer {
   htCharges             Float     @default(0)
   logisticsCharges      Float     @default(0)
   emptyTransportCharges Float     @default(0)
+
+  @@index([invoiceId])
+  @@index([containerId])
+  @@index([containerNumber])
 }
 
 model InvoiceItem {
@@ -331,6 +355,10 @@ model InvoiceItem {
   igstRate       Float         @default(18.0)
   igstAmount     Float         @default(0)
   totalAmount    Float         @default(0)
+
+  @@index([invoiceId])
+  @@index([containerId])
+  @@index([chargeMasterId])
 }
 
 model Payment {
@@ -340,13 +368,21 @@ model Payment {
   partyId         String
   party           Party    @relation(fields: [partyId], references: [id])
   amount          Float
+  tdsRate         Float?   @default(0)
+  tdsAmount       Float?   @default(0)
   currency        String   @default("INR")
   paymentDate     DateTime @default(now())
   paymentMode     String   @default("NEFT/RTGS") // NEFT/RTGS, UPI, Cheque, Cash, Net Banking
   referenceNumber String?
+  batchId         String?
   notes           String?
   recordedBy      String?
   createdAt       DateTime @default(now())
+
+  @@index([invoiceId])
+  @@index([partyId])
+  @@index([paymentDate])
+  @@index([batchId])
 }
 
 model WhatsAppMessage {
@@ -363,6 +399,10 @@ model WhatsAppMessage {
   externalMessageId String?
   sentAt            DateTime  @default(now())
   createdAt         DateTime  @default(now())
+
+  @@index([invoiceId])
+  @@index([status])
+  @@index([sentAt])
 }
 
 model WhatsAppTemplate {
@@ -392,4 +432,37 @@ model AuditLog {
   newValuesJson String?
   ipAddress     String?  @default("127.0.0.1")
   createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model InvoiceSequence {
+  id            String   @id // e.g. "MSK_HT_2026-27"
+  prefix        String
+  financialYear String
+  currentSeq    Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([prefix, financialYear])
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  entityType    String   // INVOICE, PARTY, JOB, CONTAINER, SETTINGS
+  entityId      String
+  documentType  String   // INVOICE_PDF, ATTACHMENT, SIGNATURE, SUPPORTING_DOC
+  fileName      String
+  filePath      String
+  fileSize      Int?
+  mimeType      String?  @default("application/pdf")
+  checksum      String?
+  storageKey    String   @unique
+  metadataJson  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([documentType])
 }

@@ -16,7 +16,7 @@ import {
   Info,
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { Invoice, InvoiceItem, Party } from '../../types/index';
+import { Invoice, InvoiceItem, Party, CONTAINER_SIZES } from '../../types/index';
 import { CreditNotePrintView } from './CreditNotePrintView';
 import { formatCurrency, numberToWords } from '../../utils/currency';
 
@@ -89,7 +89,7 @@ export const CreditNoteForm: React.FC<CreditNoteFormProps> = ({
     {
       id: 'row-1',
       containerNumber: '',
-      containerSize: '40ft',
+      containerSize: '40 FT',
       description: 'Handling & Transportation Rate Adjustment',
       rate: 5000,
       quantity: 1,
@@ -126,6 +126,18 @@ export const CreditNoteForm: React.FC<CreditNoteFormProps> = ({
         const standardList = (invList || []).filter((i: Invoice) => i.billType !== 'CREDIT_NOTE');
         setExistingInvoices(standardList);
         if (settings) setCompanySettings(settings);
+
+        // Fetch next sequential Credit Note number
+        if (!creditNoteNumber) {
+          api.getNextInvoiceNumber('CREDIT_NOTE', issueDate)
+            .then((res) => setCreditNoteNumber(res.nextInvoiceNumber))
+            .catch(() => {
+              const now = new Date();
+              const year = now.getFullYear();
+              const nextYear = String(year + 1).slice(-2);
+              setCreditNoteNumber(`MSK/CN/${year}-${nextYear}/001`);
+            });
+        }
 
         if (preselectedInvoiceId) {
           handleSelectOriginalInvoice(preselectedInvoiceId);
@@ -205,7 +217,7 @@ export const CreditNoteForm: React.FC<CreditNoteFormProps> = ({
       {
         id: nextId,
         containerNumber: '',
-        containerSize: '40ft',
+        containerSize: '40 FT',
         description: 'Operational Credit Adjustment',
         rate: 0,
         quantity: 1,
@@ -627,7 +639,7 @@ export const CreditNoteForm: React.FC<CreditNoteFormProps> = ({
                       type="text"
                       value={billToName}
                       onChange={(e) => setBillToName(e.target.value)}
-                      placeholder="Customer / Party Legal Name"
+                      placeholder="Customer / Party Name"
                       className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-900"
                       required
                     />
@@ -777,10 +789,9 @@ export const CreditNoteForm: React.FC<CreditNoteFormProps> = ({
                               onChange={(e) => handleRowChange(row.id, 'containerSize', e.target.value)}
                               className="rounded border border-slate-300 px-1.5 py-1 text-xs"
                             >
-                              <option value="20ft">20ft</option>
-                              <option value="40ft">40ft</option>
-                              <option value="40HC">40HC</option>
-                              <option value="45ft">45ft</option>
+                              {CONTAINER_SIZES.map((sz) => (
+                                <option key={sz} value={sz}>{sz}</option>
+                              ))}
                             </select>
                           </div>
                         </td>

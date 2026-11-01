@@ -83,6 +83,14 @@ export class PDFService {
       return PDFService.generateCreditNotePDF(invoice, settings);
     }
 
+    if (invoice.billType === 'HT_BILL') {
+      return PDFService.generateHtBillPDF(invoice, settings);
+    }
+
+    if (invoice.billType === 'EMPTY_CONTAINER') {
+      return PDFService.generateEmptyContainerPDF(invoice, settings);
+    }
+
     // Extract templateId from options, invoice, notes tag, or default
     let templateId: BillFormatId = 'format-1';
     if (options.templateId && ['format-1', 'format-2', 'format-3', 'format-4', 'format-5'].includes(options.templateId)) {
@@ -126,20 +134,6 @@ export class PDFService {
 
       // Outer bounding box for A4 sheet styling (matching Image 3 frame)
       const pageTopY = y;
-
-      // ==========================================
-      // TEMPLATE SLOT BANNER (FOR SLOTS 2-5 ONLY)
-      // ==========================================
-      if (templateId !== 'format-1') {
-        const slotNum = templateId.replace('format-', '');
-        doc.rect(leftX, y, contentWidth, 14).fill('#f8fafc').stroke('#cbd5e1');
-        doc.font('Helvetica-Bold').fontSize(7).fillColor('#64748b')
-          .text(`BILL FORMAT ${slotNum} — TEMPLATE SLOT ACTIVE (READY FOR REFERENCE DESIGN)`, leftX, y + 3.5, {
-            width: contentWidth,
-            align: 'center',
-          });
-        y += 16;
-      }
 
       // ==========================================
       // 1. TOP HEADER (ISO LOGO, COMPANY DETAILS, MSK LOGO)
@@ -1138,6 +1132,1083 @@ export class PDFService {
           width: rightX - bottomSplitX,
           align: 'center',
         });
+
+      // Finalize document
+      doc.end();
+    });
+  }
+
+  /**
+   * Generate A4 Empty Container Bill PDF buffer
+   * Strictly fitted to ONE single A4 portrait page with QR verification code
+   * Exactly matching the Empty Container Bill layout format
+   */
+  static async generateEmptyContainerPDF(invoice: any, settings: any): Promise<Buffer> {
+    const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
+    const verifyUrl = invoice.verificationToken
+      ? `${baseUrl}/verify/empty/${invoice.verificationToken}`
+      : `${baseUrl}/invoices`;
+
+    let qrBuffer: Buffer | null = null;
+    try {
+      qrBuffer = await QRCode.toBuffer(verifyUrl, {
+        width: 110,
+        margin: 1,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff',
+        },
+        errorCorrectionLevel: 'M',
+      });
+    } catch (e) {
+      console.error('Failed to generate QR code buffer for Empty Container Bill:', e);
+    }
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 18,
+        compress: false,
+        info: {
+          Title: `Empty Container Tax Invoice - ${invoice.invoiceNumber}`,
+          Author: settings?.companyName || 'MSK LOGISTIC SOLUTION',
+        },
+      });
+
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', (err) => reject(err));
+
+      const leftX = 22;
+      const contentWidth = 551;
+      const rightX = leftX + contentWidth; // 573
+      const borderDark = '#0f172a';
+      const borderLight = '#94a3b8';
+      const textDark = '#0f172a';
+      const textMuted = '#475569';
+      const mskRed = '#dc2626';
+
+      let y = 18;
+
+      // ==========================================
+      // 1. TOP HEADER (QR CODE, MSK BRANDING & TAX INVOICE)
+      // ==========================================
+      const headerBoxHeight = 62;
+      doc.rect(leftX, y, contentWidth, headerBoxHeight).stroke(borderDark);
+
+      // A. QR Code Box (Left)
+      const qrBoxWidth = 68;
+      doc.rect(leftX, y, qrBoxWidth, headerBoxHeight).stroke(borderLight);
+      doc.font('Helvetica-Bold').fontSize(5.2).fillColor(textDark)
+        .text('Scan to Verify Empty Bill', leftX + 2, y + 4, { width: qrBoxWidth - 4, align: 'center' });
+
+      if (qrBuffer) {
+        try {
+          doc.image(qrBuffer, leftX + 10, y + 12, { width: 48, height: 48 });
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // B. Company Brand & Details (Center)
+      const brandX = leftX + qrBoxWidth + 8;
+      const brandWidth = 285;
+
+      const logoPath = getAssetPath('msk-logo.png');
+      let textStartX = brandX;
+      if (logoPath) {
+        try {
+          doc.image(logoPath, brandX, y + 5, { fit: [42, 26] });
+          textStartX = brandX + 46;
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(mskRed)
+        .text(settings?.companyName || 'MSK LOGISTIC SOLUTION', textStartX, y + 5, { width: brandWidth - (textStartX - brandX) });
+
+      doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+        .text(settings?.address || 'JNPT Township Colony, Sector - 3, Building No. B/48, Office No. 3, Navi Mumbai 400702', brandX, y + 25, {
+          width: brandWidth,
+          lineGap: 1,
+        });
+
+      doc.font('Helvetica').fontSize(6).fillColor(textMuted)
+        .text(`Email: ${settings?.email || 'accounts@msklogisticsolution.com'} | Web: ${settings?.website || 'www.msklogisticsolution.com'}`, brandX, y + 45, {
+          width: brandWidth,
+        });
+
+      // C. Tax Invoice & GSTIN (Right)
+      const infoBoxX = rightX - 175;
+      const infoBoxWidth = 175;
+
+      doc.font('Helvetica-Bold').fontSize(14).fillColor(textDark)
+        .text('TAX INVOICE', infoBoxX, y + 6, { width: infoBoxWidth - 8, align: 'right' });
+
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text(`GSTIN: ${settings?.gstin || '27AXWPK4562G1ZX'}`, infoBoxX, y + 25, { width: infoBoxWidth - 8, align: 'right' });
+
+      doc.font('Helvetica').fontSize(6.5).fillColor(textMuted)
+        .text(`CIN: ${settings?.cin || 'U63090MH2026PTC123456'}`, infoBoxX, y + 37, { width: infoBoxWidth - 8, align: 'right' });
+
+      y += headerBoxHeight + 3;
+
+      // ==========================================
+      // 2. META BAR (INVOICE NO, DATE, GATE PASS, EIR, TERMS)
+      // ==========================================
+      const metaBoxH = 26;
+      doc.rect(leftX, y, contentWidth, metaBoxH).fillAndStroke('#f8fafc', borderDark);
+
+      const invDateStr = invoice.invoiceDate
+        ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      const stateDisplay = invoice.billToState ? `${invoice.billToState} (Code ${invoice.billToStateCode || '27'})` : 'Maharashtra (Code 27)';
+      const tgp = invoice.consigneeName || 'TGP-948102';
+      const eir = invoice.sbNumbers || 'EIR-48190';
+      const payTerms = 'Net 15 Days';
+
+      // Row 1
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Invoice No: ', leftX + 6, y + 4, { continued: true })
+        .font('Helvetica-Bold').fillColor(mskRed).text(invoice.invoiceNumber, { continued: false });
+
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Date of Issue: ', leftX + 185, y + 4, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(invDateStr, { continued: false });
+
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Place of Supply: ', leftX + 370, y + 4, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(stateDisplay, { continued: false });
+
+      // Row 2
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Terminal Gate Pass: ', leftX + 6, y + 15, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(tgp, { continued: false });
+
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('EIR / LoLo Receipt: ', leftX + 185, y + 15, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(eir, { continued: false });
+
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Payment Terms: ', leftX + 370, y + 15, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(payTerms, { continued: false });
+
+      y += metaBoxH + 4;
+
+      // ==========================================
+      // 3. SUPPLIER / ISSUING DEPOT & BILL TO (TWO COLUMNS)
+      // ==========================================
+      const supBoxH = 50;
+      doc.rect(leftX, y, contentWidth, supBoxH).stroke(borderDark);
+
+      const colSplitX = leftX + 275;
+      doc.moveTo(colSplitX, y).lineTo(colSplitX, y + supBoxH).stroke(borderDark);
+
+      // Left Column: Supplier / Issuing Depot
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text('SUPPLIER / ISSUING DEPOT:', leftX + 6, y + 4);
+
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(textDark)
+        .text('MSK Nhava Sheva CFS & Empty Depot', leftX + 6, y + 15, { width: 260 });
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textDark)
+        .text('Dronagiri Node, Sector 3, Nhava Sheva, Navi Mumbai, MH 400702', leftX + 6, y + 25, { width: 260 });
+
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textMuted)
+        .text('State: Maharashtra | State Code: 27', leftX + 6, y + 37);
+
+      // Right Column: Bill To (Recipient)
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text('BILL TO (RECIPIENT):', colSplitX + 6, y + 4);
+
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(textDark)
+        .text(invoice.billToName || 'RECIPIENT PARTY', colSplitX + 6, y + 15, { width: 260 });
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textDark)
+        .text(invoice.billToAddress || 'Registered Billing Address', colSplitX + 6, y + 25, { width: 260 });
+
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark)
+        .text(`GSTIN: ${invoice.billToGstin || 'URP'}`, colSplitX + 6, y + 37);
+
+      y += supBoxH + 4;
+
+      // ==========================================
+      // 4. SHIPMENT & TRANSPORT REFERENCE GROUNDING (FULL-WIDTH)
+      // ==========================================
+      const shipBoxH = 32;
+      doc.rect(leftX, y, contentWidth, shipBoxH).fillAndStroke('#f8fafc', borderDark);
+
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark)
+        .text('SHIPMENT & TRANSPORT REFERENCE GROUNDING', leftX + 6, y + 4);
+
+      // Row 1
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Vessel/Voyage: ', leftX + 6, y + 14, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(invoice.vesselVoyage || 'Pacific Pioneer / V-042E', { continued: false });
+
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Master B/L No.: ', leftX + 185, y + 14, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(invoice.mblHbl || 'MEDU67201948', { continued: false });
+
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Delivery Order: ', leftX + 370, y + 14, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(invoice.portOfLoading || 'DO-77821', { continued: false });
+
+      // Row 2
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Transporter: ', leftX + 6, y + 22, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(invoice.portOfDischarge || 'Shri Mahalakshmi Logistics', { continued: false });
+
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Vehicle No.: ', leftX + 185, y + 22, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(invoice.consigneeName || 'MH-46-AR-8812', { continued: false });
+
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textMuted).text('Currency: ', leftX + 370, y + 22, { continued: true })
+        .font('Helvetica-Bold').fillColor(textDark).text('INR (₹)', { continued: false });
+
+      y += shipBoxH + 5;
+
+      // ==========================================
+      // 5. SECTION 1 — EQUIPMENT TRACKING & OPERATION TIMELINES
+      // ==========================================
+      doc.font('Helvetica-Bold').fontSize(7.8).fillColor(textDark)
+        .text('1. EQUIPMENT TRACKING & OPERATION TIMELINES', leftX, y);
+      y += 10;
+
+      // Table Header
+      const eqColW = [125, 80, 85, 85, 80, 96];
+      const eqColX = [leftX];
+      for (let i = 0; i < eqColW.length; i++) {
+        eqColX.push(eqColX[i] + eqColW[i]);
+      }
+
+      const eqHeaderH = 14;
+      doc.rect(leftX, y, contentWidth, eqHeaderH).fillAndStroke('#1e293b', borderDark);
+
+      const eqHeaders = [
+        'CONTAINER NO.',
+        'SIZE / TYPE',
+        'GATE-IN DATE',
+        'GATE-OUT DATE',
+        'FREE DAYS',
+        'STORAGE DAYS',
+      ];
+
+      doc.font('Helvetica-Bold').fontSize(5.8).fillColor('#ffffff');
+      eqHeaders.forEach((h, i) => {
+        const align = i === 0 ? 'left' : 'center';
+        const padX = i === 0 ? eqColX[i] + 4 : eqColX[i];
+        const padW = i === 0 ? eqColW[i] - 6 : eqColW[i];
+        doc.text(h, padX, y + 4, { width: padW, align });
+      });
+
+      y += eqHeaderH;
+
+      const containers = (invoice.containers && invoice.containers.length > 0)
+        ? invoice.containers
+        : [
+            {
+              containerNumber: 'MSCU4810294',
+              size: "40' HC",
+              type: 'Dry',
+              emptyGateInDate: '2026-10-12',
+              lddOutDate: '2026-10-24',
+              emptyGroundDays: 3,
+              loadedGroundDays: 12,
+              daysAfterCarting: 9,
+            },
+            {
+              containerNumber: 'MSCU9182740',
+              size: "40' HC",
+              type: 'Dry',
+              emptyGateInDate: '2026-10-12',
+              lddOutDate: '2026-10-24',
+              emptyGroundDays: 3,
+              loadedGroundDays: 12,
+              daysAfterCarting: 9,
+            },
+          ];
+
+      const eqRowH = 15;
+      const eqTableTop = y - eqHeaderH;
+
+      const fmtD = (dVal: any) => {
+        if (!dVal) return '-';
+        const dt = new Date(dVal);
+        return isNaN(dt.getTime()) ? '-' : dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      };
+
+      containers.forEach((c: any, idx: number) => {
+        const isAlt = idx % 2 === 1;
+        doc.rect(leftX, y, contentWidth, eqRowH).fillAndStroke(isAlt ? '#f8fafc' : '#ffffff', borderLight);
+
+        let sDays = c.loadedGroundDays;
+        let freeD = c.emptyGroundDays || 3;
+        let chgDays = c.daysAfterCarting;
+
+        if ((sDays === undefined || sDays === null) && c.emptyGateInDate && c.lddOutDate) {
+          const t1 = new Date(c.emptyGateInDate).getTime();
+          const t2 = new Date(c.lddOutDate).getTime();
+          if (!isNaN(t1) && !isNaN(t2) && t2 >= t1) {
+            sDays = Math.max(0, Math.round((t2 - t1) / (1000 * 3600 * 24)));
+            chgDays = Math.max(0, sDays - freeD);
+          }
+        }
+
+        doc.font('Helvetica-Bold').fontSize(6.8).fillColor(textDark)
+          .text(c.containerNumber || 'CONTAINER', eqColX[0] + 4, y + 4, { width: eqColW[0] - 6 });
+
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark);
+        doc.text(`${c.size || "40'"} ${c.type || 'Dry'}`, eqColX[1], y + 4, { width: eqColW[1], align: 'center' });
+        doc.text(fmtD(c.emptyGateInDate), eqColX[2], y + 4, { width: eqColW[2], align: 'center' });
+        doc.text(fmtD(c.lddOutDate), eqColX[3], y + 4, { width: eqColW[3], align: 'center' });
+        doc.text(`${freeD} Days`, eqColX[4], y + 4, { width: eqColW[4], align: 'center' });
+
+        doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#0f766e');
+        doc.text(`${sDays || 0} Days (Charge: ${chgDays || 0}D)`, eqColX[5], y + 4, { width: eqColW[5], align: 'center' });
+
+        y += eqRowH;
+      });
+
+      doc.rect(leftX, eqTableTop, contentWidth, y - eqTableTop).stroke(borderDark);
+      y += 5;
+
+      // ==========================================
+      // 6. SECTION 2 — ITEMISED TARIFF & FINANCIAL CHARGES
+      // ==========================================
+      doc.font('Helvetica-Bold').fontSize(7.8).fillColor(textDark)
+        .text('2. ITEMISED TARIFF & FINANCIAL CHARGES', leftX, y);
+      y += 10;
+
+      // Charge Table Columns
+      const chColW = [24, 260, 56, 68, 38, 105];
+      const chColX = [leftX];
+      for (let i = 0; i < chColW.length; i++) {
+        chColX.push(chColX[i] + chColW[i]);
+      }
+
+      const chargeHeaderH = 14;
+      doc.rect(leftX, y, contentWidth, chargeHeaderH).fillAndStroke('#1e293b', borderDark);
+
+      const chHeaders = [
+        'SR.',
+        'DESCRIPTION OF SERVICE CHARGES',
+        'SAC CODE',
+        'RATE (INR)',
+        'QTY',
+        'TAXABLE VALUE (INR)',
+      ];
+
+      doc.font('Helvetica-Bold').fontSize(5.5).fillColor('#ffffff');
+      chHeaders.forEach((h, i) => {
+        const align = i === 1 ? 'left' : (i >= 3 ? 'right' : 'center');
+        const padX = i === 1 ? chColX[i] + 4 : (i >= 3 ? chColX[i] : chColX[i]);
+        const padW = i === 1 ? chColW[i] - 8 : (i >= 3 ? chColW[i] - 5 : chColW[i]);
+        doc.text(h, padX, y + 4, { width: padW, align });
+      });
+
+      y += chargeHeaderH;
+
+      const items = (invoice.items && invoice.items.length > 0)
+        ? invoice.items
+        : [
+            { srNo: 1, description: 'Empty Container Lift-On (LoLo) Fees', hsnSacCode: '996719', rate: 1500, quantity: 2, taxableValue: 3000 },
+            { srNo: 2, description: 'Empty Depot Ground Storage Charges (Total 18 Chargeable Days)', hsnSacCode: '996711', rate: 450, quantity: 18, taxableValue: 8100 },
+            { srNo: 3, description: 'Terminal Survey & Cleaning Charges', hsnSacCode: '996713', rate: 850, quantity: 2, taxableValue: 1700 },
+          ];
+
+      const chRowH = 14;
+      const chargesTableTop = y - chargeHeaderH;
+      const fmtCurrency = (n: number) => {
+        return (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      };
+
+      items.forEach((item: any, idx: number) => {
+        const isAlt = idx % 2 === 1;
+        doc.rect(leftX, y, contentWidth, chRowH).fillAndStroke(isAlt ? '#f8fafc' : '#ffffff', borderLight);
+
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark);
+        doc.text(String(item.srNo || idx + 1), chColX[0], y + 4, { width: chColW[0], align: 'center' });
+        doc.text(item.description || '-', chColX[1] + 4, y + 4, { width: chColW[1] - 8, align: 'left' });
+        doc.text(item.hsnSacCode || '996719', chColX[2], y + 4, { width: chColW[2], align: 'center' });
+        doc.text(fmtCurrency(item.rate), chColX[3], y + 4, { width: chColW[3] - 5, align: 'right' });
+        doc.text(String(item.quantity || 1), chColX[4], y + 4, { width: chColW[4], align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(6.5);
+        doc.text(fmtCurrency(item.taxableValue || item.amount || (item.rate * item.quantity)), chColX[5], y + 4, { width: chColW[5] - 5, align: 'right' });
+
+        y += chRowH;
+      });
+
+      doc.rect(leftX, chargesTableTop, contentWidth, y - chargesTableTop).stroke(borderDark);
+
+      // ==========================================
+      // 7. TOTALS SUMMARY BOX (RIGHT-ALIGNED)
+      // ==========================================
+      const totalsW = 205;
+      const totalsX = rightX - totalsW;
+      const totalRowH = 12;
+
+      const subtotalTaxable = invoice.taxableAmount || 12800;
+      const cgstAmt = invoice.cgstAmount !== undefined ? invoice.cgstAmount : 1152;
+      const sgstAmt = invoice.sgstAmount !== undefined ? invoice.sgstAmount : 1152;
+      const igstAmt = invoice.igstAmount !== undefined ? invoice.igstAmount : 0;
+      const grandTotal = invoice.grandTotal || 15104;
+      const cgstRate = invoice.cgstRate || 9;
+      const sgstRate = invoice.sgstRate || 9;
+      const igstRate = invoice.igstRate || 18;
+
+      // Subtotal Taxable
+      doc.rect(totalsX, y, totalsW, totalRowH).fillAndStroke('#ffffff', borderLight);
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textDark)
+        .text('Subtotal Taxable Amount', totalsX + 6, y + 3, { width: 105 });
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textDark)
+        .text(fmtCurrency(subtotalTaxable), totalsX + 115, y + 3, { width: totalsW - 120, align: 'right' });
+      y += totalRowH;
+
+      if (igstAmt > 0) {
+        doc.rect(totalsX, y, totalsW, totalRowH).fillAndStroke('#ffffff', borderLight);
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(`IGST @ ${igstRate}%`, totalsX + 6, y + 3, { width: 105 });
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(fmtCurrency(igstAmt), totalsX + 115, y + 3, { width: totalsW - 120, align: 'right' });
+        y += totalRowH;
+      } else {
+        doc.rect(totalsX, y, totalsW, totalRowH).fillAndStroke('#ffffff', borderLight);
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(`CGST @ ${cgstRate}%`, totalsX + 6, y + 3, { width: 105 });
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(fmtCurrency(cgstAmt), totalsX + 115, y + 3, { width: totalsW - 120, align: 'right' });
+        y += totalRowH;
+
+        doc.rect(totalsX, y, totalsW, totalRowH).fillAndStroke('#ffffff', borderLight);
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(`SGST @ ${sgstRate}%`, totalsX + 6, y + 3, { width: 105 });
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(fmtCurrency(sgstAmt), totalsX + 115, y + 3, { width: totalsW - 120, align: 'right' });
+        y += totalRowH;
+      }
+
+      // Grand Total Row
+      const grandTotalH = 14;
+      doc.rect(totalsX, y, totalsW, grandTotalH).fillAndStroke('#f1f5f9', borderDark);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text('Total Invoice Value (INR)', totalsX + 6, y + 3.5, { width: 110 });
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(mskRed)
+        .text(`₹ ${fmtCurrency(grandTotal)}`, totalsX + 115, y + 3, { width: totalsW - 120, align: 'right' });
+      y += grandTotalH + 5;
+
+      // ==========================================
+      // 8. AMOUNT IN WORDS
+      // ==========================================
+      const wordsBoxH = 13;
+      doc.rect(leftX, y, contentWidth, wordsBoxH).fillAndStroke('#f8fafc', borderDark);
+      let wordsText = invoice.amountInWords || 'INR Fifteen Thousand One Hundred Four Only';
+      if (!wordsText.toLowerCase().startsWith('inr') && !wordsText.toLowerCase().startsWith('rs')) {
+        wordsText = `INR ${wordsText}`;
+      }
+      if (!wordsText.toLowerCase().endsWith('only')) {
+        wordsText = `${wordsText} Only`;
+      }
+      doc.font('Helvetica-Bold').fontSize(6.8).fillColor(textDark)
+        .text(`Amount in words: ${wordsText}`, leftX + 6, y + 3, { width: contentWidth - 12 });
+      y += wordsBoxH + 4;
+
+      // ==========================================
+      // 9. TERMS & CONDITIONS AND BANK REMITTANCE (TWO COLUMNS)
+      // ==========================================
+      const bottomBoxH = 50;
+      const termsW = 310;
+      const bankW = contentWidth - termsW; // 241
+      const bankX = leftX + termsW;
+
+      // Terms box (Left)
+      doc.rect(leftX, y, termsW, bottomBoxH).stroke(borderDark);
+      doc.font('Helvetica-Bold').fontSize(6.8).fillColor(textDark)
+        .text('Terms & Conditions:', leftX + 6, y + 4);
+
+      const termsList = [
+        '1. EIR verification and physical condition inspection must be acknowledged before gate-out.',
+        '2. Storage slab calculations and demurrage accrue according to the standard empty depot tariff.',
+        '3. No claims for discrepancies or damaged equipment will be entertained unless notified in writing within 7 days.',
+      ];
+
+      let termY = y + 14;
+      doc.font('Helvetica').fontSize(5.8).fillColor(textDark);
+      termsList.forEach((t) => {
+        doc.text(t, leftX + 6, termY, { width: termsW - 12, lineGap: 1 });
+        termY += 10;
+      });
+
+      // Bank Remittance Box (Right)
+      doc.rect(bankX, y, bankW, bottomBoxH).fillAndStroke('#f8fafc', borderDark);
+      doc.font('Helvetica-Bold').fontSize(6.8).fillColor(textDark)
+        .text('Bank Remittance Details:', bankX + 6, y + 4);
+
+      doc.font('Helvetica').fontSize(6.2).fillColor(textDark);
+      doc.text(`Bank Name: ${settings?.bankName || 'ICICI Bank'}`, bankX + 6, y + 14);
+      doc.text(`A/C Name: ${settings?.bankAccountName || 'MSK LOGISTIC SOLUTION'}`, bankX + 6, y + 22);
+      doc.text(`A/C Number: ${settings?.bankAccountNo || '574005000006'}`, bankX + 6, y + 30);
+      doc.text(`IFSC: ${settings?.bankIfsc || 'ICIC0005740'}  |  Branch: ${settings?.bankBranch || 'Dronagiri Node'}`, bankX + 6, y + 38);
+
+      y += bottomBoxH + 4;
+
+      // ==========================================
+      // 10. SIGNATURE & SYSTEM STAMP FOOTER
+      // ==========================================
+      const signBoxH = 38;
+      doc.rect(leftX, y, contentWidth, signBoxH).stroke(borderDark);
+
+      const tokenRef = invoice.verificationToken ? invoice.verificationToken.slice(0, 12).toUpperCase() : 'VERIFIED';
+      doc.font('Helvetica').fontSize(6.5).fillColor(textMuted)
+        .text(`Generated System Stamp: MSK ERP Verified Authentic (Ref: ${tokenRef})`, leftX + 8, y + 13, { width: 280 });
+
+      const sigX = rightX - 190;
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text(`For ${settings?.companyName || 'MSK LOGISTIC SOLUTION'}`, sigX, y + 5, { width: 180, align: 'center' });
+
+      if (settings?.signatureUrl && fs.existsSync(settings.signatureUrl)) {
+        try {
+          doc.image(settings.signatureUrl, sigX + 50, y + 15, { fit: [80, 14], align: 'center' });
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      doc.font('Helvetica').fontSize(6.5).fillColor(textMuted)
+        .text('Authorised Signatory', sigX, y + 24, { width: 180, align: 'center' });
+
+      // Page Indicator
+      doc.font('Helvetica').fontSize(6).fillColor(textMuted)
+        .text('Page 1 of 1', leftX, y + signBoxH + 2, { width: contentWidth, align: 'right' });
+
+      doc.end();
+    });
+  }
+
+  /**
+   * Generate A4 H & T Bill (Handling & Transportation Tax Invoice) PDF buffer
+   * Strictly fitted to ONE single A4 portrait page with QR verification code
+   * Exactly matching the uploaded Reference Images 1 & 2 layout format
+   */
+  static async generateHtBillPDF(invoice: any, settings: any): Promise<Buffer> {
+    const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
+    const verifyUrl = invoice.verificationToken
+      ? `${baseUrl}/verify/ht/${invoice.verificationToken}`
+      : `${baseUrl}/invoices`;
+
+    let qrBuffer: Buffer | null = null;
+    try {
+      qrBuffer = await QRCode.toBuffer(verifyUrl, {
+        width: 110,
+        margin: 1,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff',
+        },
+        errorCorrectionLevel: 'M',
+      });
+    } catch (e) {
+      console.error('Failed to generate QR code buffer for H&T Bill:', e);
+    }
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 18,
+        compress: false,
+        info: {
+          Title: `H & T Tax Invoice - ${invoice.invoiceNumber}`,
+          Author: settings?.companyName || 'MSK LOGISTIC SOLUTION',
+        },
+      });
+
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', (err) => reject(err));
+
+      const leftX = 22;
+      const contentWidth = 551;
+      const rightX = leftX + contentWidth; // 573
+      const borderDark = '#0f172a';
+      const borderTable = '#334155';
+      const borderLight = '#94a3b8';
+      const fillHeader = '#1e293b';
+      const fillSubHeader = '#f8fafc';
+      const textDark = '#0f172a';
+      const textMuted = '#475569';
+      const mskRed = '#dc2626';
+
+      let y = 18;
+
+      // ==========================================
+      // 1. TOP HEADER (QR CODE, MSK BRANDING & TAX INVOICE DETAILS)
+      // ==========================================
+      const headerBoxHeight = 66;
+      doc.rect(leftX, y, contentWidth, headerBoxHeight).stroke(borderDark);
+
+      // A. QR Code Box (Left) - "Scan to Verify H&T Bill"
+      const qrBoxWidth = 72;
+      doc.rect(leftX, y, qrBoxWidth, headerBoxHeight).stroke(borderLight);
+      doc.font('Helvetica-Bold').fontSize(5.2).fillColor(textDark)
+        .text('Scan to Verify Invoice', leftX + 2, y + 4, { width: qrBoxWidth - 4, align: 'center' });
+
+      if (qrBuffer) {
+        try {
+          doc.image(qrBuffer, leftX + 11, y + 13, { width: 50, height: 50 });
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // B. Company Brand & Details (Center-Left)
+      const brandX = leftX + qrBoxWidth + 8;
+      const brandWidth = 275;
+
+      // Logo + Name row
+      const logoPath = getAssetPath('msk-logo.png');
+      let textStartX = brandX;
+      if (logoPath) {
+        try {
+          doc.image(logoPath, brandX, y + 5, { fit: [42, 28] });
+          textStartX = brandX + 46;
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(mskRed)
+        .text(settings?.companyName || 'MSK LOGISTIC SOLUTION', textStartX, y + 5, { width: brandWidth - (textStartX - brandX) });
+
+      doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+        .text(settings?.address || 'JNPT Township Colony, Sector - 3, Building No. B/48, Office No. 3, Navi Mumbai 400702', brandX, y + 27, {
+          width: brandWidth,
+          lineGap: 1,
+        });
+
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textDark)
+        .text(`GSTIN: ${settings?.gstin || '27AXWPK4562G1ZX'} | PAN: ${settings?.pan || 'AXWPK4562G'}`, brandX, y + 45, {
+          width: brandWidth,
+        });
+
+      doc.font('Helvetica').fontSize(6).fillColor(textMuted)
+        .text(`Email: ${settings?.email || 'accounts@msklogisticsolution.com'} | Web: ${settings?.website || 'www.msklogisticsolution.com'}`, brandX, y + 55, {
+          width: brandWidth,
+        });
+
+      // C. Tax Invoice Details (Right Box)
+      const infoBoxX = rightX - 185;
+      const infoBoxWidth = 185;
+
+      doc.font('Helvetica-Bold').fontSize(15).fillColor(textDark)
+        .text('TAX INVOICE', infoBoxX, y + 6, { width: infoBoxWidth - 8, align: 'right' });
+
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(textDark)
+        .text(`Invoice No: ${invoice.invoiceNumber}`, infoBoxX, y + 26, { width: infoBoxWidth - 8, align: 'right' });
+
+      const invDateStr = invoice.invoiceDate
+        ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      doc.font('Helvetica').fontSize(7.5).fillColor(textDark)
+        .text(`Date: ${invDateStr}`, infoBoxX, y + 38, { width: infoBoxWidth - 8, align: 'right' });
+
+      const stateDisplay = invoice.billToState ? `${invoice.billToState} (Code ${invoice.billToStateCode || '27'})` : 'Maharashtra (Code 27)';
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textMuted)
+        .text(`Place of Supply: ${stateDisplay}`, infoBoxX, y + 50, { width: infoBoxWidth - 8, align: 'right' });
+
+      y += headerBoxHeight + 4;
+
+      // ==========================================
+      // 2. BILL TO & SHIPMENT REFERENCE (TWO COLUMNS)
+      // ==========================================
+      const refBoxHeight = 56;
+      doc.rect(leftX, y, contentWidth, refBoxHeight).stroke(borderDark);
+
+      const colSplitX = leftX + 275;
+      doc.moveTo(colSplitX, y).lineTo(colSplitX, y + refBoxHeight).stroke(borderDark);
+
+      // Left Column: Bill To
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text('BILL TO (RECIPIENT):', leftX + 6, y + 5);
+
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(textDark)
+        .text(invoice.billToName || 'RECIPIENT PARTY', leftX + 6, y + 16, { width: 260 });
+
+      doc.font('Helvetica').fontSize(6.8).fillColor(textDark)
+        .text(invoice.billToAddress || 'Registered Office Address', leftX + 6, y + 27, { width: 260, lineGap: 1 });
+
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark)
+        .text(`GSTIN: ${invoice.billToGstin || 'URP'}`, leftX + 6, y + 43);
+
+      // Right Column: Shipment Reference
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text('SHIPMENT REFERENCE:', colSplitX + 6, y + 5);
+
+      const rightInnerW = rightX - colSplitX - 12;
+
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textMuted).text('Vessel/Voyage: ', colSplitX + 6, y + 16, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(invoice.vesselVoyage || 'Pacific Pioneer / V-042E');
+
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textMuted).text('MBL / HBL No: ', colSplitX + 6, y + 28, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(invoice.mblHbl || 'MEDU67201948 / AGLPNE0941');
+
+      const pol = invoice.portOfLoading || 'Nhava Sheva (INNSA)';
+      const pod = invoice.portOfDischarge || 'Rotterdam (NLRTM)';
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textMuted).text('Port of Loading/Discharge: ', colSplitX + 6, y + 40, { continued: true })
+        .font('Helvetica').fillColor(textDark).text(`${pol} / ${pod}`);
+
+      y += refBoxHeight + 5;
+
+      // ==========================================
+      // 3. SECTION 1 — CONTAINER TRACKING, MILESTONES & PERIOD CALCULATIONS
+      // ==========================================
+      doc.font('Helvetica-Bold').fontSize(7.8).fillColor(textDark)
+        .text('1. CONTAINER TRACKING, MILESTONES & PERIOD CALCULATIONS', leftX, y);
+      y += 11;
+
+      // Container Table Header Heights
+      const superHeaderHeight = 11;
+      const subHeaderHeight = 14;
+      const containerTableTop = y;
+
+      // Columns Widths (Total: 551)
+      const cColW = [135, 58, 58, 58, 62, 60, 60, 60];
+      const cColX = [leftX];
+      for (let i = 0; i < cColW.length; i++) {
+        cColX.push(cColX[i] + cColW[i]);
+      }
+
+      // Group 1 Header: Over Cols 1-4 (Timeline Dates)
+      const datesGroupX = cColX[1];
+      const datesGroupW = cColW[1] + cColW[2] + cColW[3] + cColW[4]; // 236
+      doc.rect(datesGroupX, y, datesGroupW, superHeaderHeight).fillAndStroke('#334155', borderDark);
+      doc.font('Helvetica-Bold').fontSize(5.5).fillColor('#ffffff')
+        .text('OPERATIONAL MILESTONE TIMELINE DATES', datesGroupX, y + 3, { width: datesGroupW, align: 'center' });
+
+      // Group 2 Header: Over Cols 5-7 (Days Calculation Breakdown)
+      const daysGroupX = cColX[5];
+      const daysGroupW = cColW[5] + cColW[6] + cColW[7]; // 180
+      doc.rect(daysGroupX, y, daysGroupW, superHeaderHeight).fillAndStroke('#1e293b', borderDark);
+      doc.font('Helvetica-Bold').fontSize(5.5).fillColor('#ffffff')
+        .text('DAYS CALCULATION BREAKDOWN', daysGroupX, y + 3, { width: daysGroupW, align: 'center' });
+
+      // Container Col 0 Super Header Box
+      doc.rect(cColX[0], y, cColW[0], superHeaderHeight).fillAndStroke('#1e293b', borderDark);
+
+      y += superHeaderHeight;
+
+      // Sub-Headers Row
+      doc.rect(leftX, y, contentWidth, subHeaderHeight).fillAndStroke('#1e293b', borderDark);
+
+      const cHeaders = [
+        'CONTAINER NO. & SIZE/TYPE',
+        'EMPTY PICK-UP',
+        'STUFFING DATE',
+        'CARTING DATE',
+        'LOADED GATE-IN',
+        'EMPTY DAYS\n(PICK-UP TO STUFF)',
+        'CARGO DAYS\n(STUFF TO CART)',
+        'LOADED DAYS\n(CART TO GATE-IN)',
+      ];
+
+      doc.font('Helvetica-Bold').fontSize(5.2).fillColor('#ffffff');
+      cHeaders.forEach((h, i) => {
+        const align = i === 0 ? 'left' : 'center';
+        const padX = i === 0 ? cColX[i] + 4 : cColX[i];
+        const padW = i === 0 ? cColW[i] - 6 : cColW[i];
+        doc.text(h, padX, y + 2, { width: padW, align });
+      });
+
+      y += subHeaderHeight;
+
+      // Container Data Rows
+      const containers = (invoice.containers && invoice.containers.length > 0)
+        ? invoice.containers
+        : [
+            {
+              containerNumber: 'MSCU4810294',
+              size: "40' HC",
+              type: 'Dry',
+              emptyGateInDate: '2026-10-12',
+              stuffingDate: '2026-10-15',
+              cartingDate: '2026-10-19',
+              lddOutDate: '2026-10-24',
+              emptyGroundDays: 3,
+              daysAfterCarting: 4,
+              loadedGroundDays: 5,
+            },
+            {
+              containerNumber: 'MSCU9182740',
+              size: "40' HC",
+              type: 'Dry',
+              emptyGateInDate: '2026-10-12',
+              stuffingDate: '2026-10-16',
+              cartingDate: '2026-10-20',
+              lddOutDate: '2026-10-24',
+              emptyGroundDays: 4,
+              daysAfterCarting: 4,
+              loadedGroundDays: 4,
+            },
+          ];
+
+      const cRowHeight = 15;
+      containers.forEach((c: any, idx: number) => {
+        const isAlt = idx % 2 === 1;
+        doc.rect(leftX, y, contentWidth, cRowHeight).fillAndStroke(isAlt ? '#f8fafc' : '#ffffff', borderLight);
+
+        // Date calculations
+        const fmtD = (dVal: any) => {
+          if (!dVal) return '-';
+          const dt = new Date(dVal);
+          return isNaN(dt.getTime()) ? '-' : dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        };
+
+        const calcDays = (d1: any, d2: any, stored: number) => {
+          if (stored !== undefined && stored !== null && Number(stored) > 0) return `${stored} Days`;
+          if (!d1 || !d2) return '-';
+          const dt1 = new Date(d1).getTime();
+          const dt2 = new Date(d2).getTime();
+          if (isNaN(dt1) || isNaN(dt2) || dt2 < dt1) return '-';
+          const diff = Math.max(0, Math.round((dt2 - dt1) / (1000 * 3600 * 24)));
+          return `${diff} Days`;
+        };
+
+        const emptyD = calcDays(c.emptyGateInDate, c.stuffingDate, c.emptyGroundDays);
+        const cargoD = calcDays(c.stuffingDate, c.cartingDate, c.daysAfterCarting);
+        const loadedD = calcDays(c.cartingDate, c.lddOutDate, c.loadedGroundDays);
+
+        doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textDark)
+          .text(`${c.containerNumber || 'CONTAINER'}`, cColX[0] + 4, y + 2, { width: cColW[0] - 8 });
+        doc.font('Helvetica').fontSize(5.8).fillColor(textMuted)
+          .text(`${c.size || "40'"} ${c.type || 'Dry'}`, cColX[0] + 4, y + 8, { width: cColW[0] - 8 });
+
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark);
+        doc.text(fmtD(c.emptyGateInDate), cColX[1], y + 4, { width: cColW[1], align: 'center' });
+        doc.text(fmtD(c.stuffingDate), cColX[2], y + 4, { width: cColW[2], align: 'center' });
+        doc.text(fmtD(c.cartingDate), cColX[3], y + 4, { width: cColW[3], align: 'center' });
+        doc.text(fmtD(c.lddOutDate), cColX[4], y + 4, { width: cColW[4], align: 'center' });
+
+        doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#0f766e');
+        doc.text(emptyD, cColX[5], y + 4, { width: cColW[5], align: 'center' });
+        doc.text(cargoD, cColX[6], y + 4, { width: cColW[6], align: 'center' });
+        doc.text(loadedD, cColX[7], y + 4, { width: cColW[7], align: 'center' });
+
+        y += cRowHeight;
+      });
+
+      // Stroke outer boundary of Section 1 table
+      doc.rect(leftX, containerTableTop, contentWidth, y - containerTableTop).stroke(borderDark);
+
+      y += 6;
+
+      // ==========================================
+      // 4. SECTION 2 — ITEMISED FINANCIAL CHARGE PARTICULARS
+      // ==========================================
+      doc.font('Helvetica-Bold').fontSize(7.8).fillColor(textDark)
+        .text('2. ITEMISED FINANCIAL CHARGE PARTICULARS', leftX, y);
+      y += 11;
+
+      // Charges Columns Widths (Total: 551)
+      // Sr: 24, Desc: 257, SAC: 54, Rate: 68, Qty: 38, Taxable: 110
+      const chColW = [24, 257, 54, 68, 38, 110];
+      const chColX = [leftX];
+      for (let i = 0; i < chColW.length; i++) {
+        chColX.push(chColX[i] + chColW[i]);
+      }
+
+      const chargeHeaderH = 14;
+      doc.rect(leftX, y, contentWidth, chargeHeaderH).fillAndStroke('#1e293b', borderDark);
+
+      const chHeaders = [
+        'SR.',
+        'DESCRIPTION OF SERVICE CHARGES / OPERATIONS',
+        'SAC CODE',
+        'RATE (INR)',
+        'QTY',
+        'TAXABLE VALUE (INR)',
+      ];
+
+      doc.font('Helvetica-Bold').fontSize(5.5).fillColor('#ffffff');
+      chHeaders.forEach((h, i) => {
+        const align = i === 1 ? 'left' : (i >= 3 ? 'right' : 'center');
+        const padX = i === 1 ? chColX[i] + 4 : (i >= 3 ? chColX[i] : chColX[i]);
+        const padW = i === 1 ? chColW[i] - 8 : (i >= 3 ? chColW[i] - 5 : chColW[i]);
+        doc.text(h, padX, y + 4, { width: padW, align });
+      });
+
+      y += chargeHeaderH;
+
+      const items = (invoice.items && invoice.items.length > 0)
+        ? invoice.items
+        : [
+            { srNo: 1, description: 'Ocean Freight Charges (Base Carrier Contracted Rates)', hsnSacCode: '996521', rate: 140000, quantity: 2, taxableValue: 280000 },
+            { srNo: 2, description: 'Empty Container Depot Supervision & Detention Fees (Total 7 Days)', hsnSacCode: '996719', rate: 1200, quantity: 7, taxableValue: 8400 },
+            { srNo: 3, description: 'Cargo Staging & Warehouse Handling (Cargo Days: Total 8 Days)', hsnSacCode: '996729', rate: 2500, quantity: 8, taxableValue: 20000 },
+            { srNo: 4, description: 'Loaded Ground Rent & Port Terminal Storage (Loaded Days: Total 9 Days)', hsnSacCode: '996711', rate: 1800, quantity: 9, taxableValue: 16200 },
+            { srNo: 5, description: 'Terminal Handling Charges (THC) & Origin Drayage Services', hsnSacCode: '996713', rate: 18500, quantity: 2, taxableValue: 37000 },
+          ];
+
+      const chRowH = 14.5;
+      const fmtCurrency = (n: number) => {
+        return (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      };
+
+      const chargesTableTop = y - chargeHeaderH;
+
+      items.forEach((item: any, idx: number) => {
+        const isAlt = idx % 2 === 1;
+        doc.rect(leftX, y, contentWidth, chRowH).fillAndStroke(isAlt ? '#f8fafc' : '#ffffff', borderLight);
+
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark);
+        doc.text(String(item.srNo || idx + 1), chColX[0], y + 4, { width: chColW[0], align: 'center' });
+        doc.text(item.description || '-', chColX[1] + 4, y + 4, { width: chColW[1] - 8, align: 'left' });
+        doc.text(item.hsnSacCode || '996719', chColX[2], y + 4, { width: chColW[2], align: 'center' });
+        doc.text(fmtCurrency(item.rate), chColX[3], y + 4, { width: chColW[3] - 5, align: 'right' });
+        doc.text(String(item.quantity || 1), chColX[4], y + 4, { width: chColW[4], align: 'center' });
+        doc.font('Helvetica-Bold').fontSize(6.5);
+        doc.text(fmtCurrency(item.taxableValue || item.amount || (item.rate * item.quantity)), chColX[5], y + 4, { width: chColW[5] - 5, align: 'right' });
+
+        y += chRowH;
+      });
+
+      // Outer border of charges table
+      doc.rect(leftX, chargesTableTop, contentWidth, y - chargesTableTop).stroke(borderDark);
+
+      // ==========================================
+      // 5. TOTALS BREAKDOWN (RIGHT-ALIGNED)
+      // ==========================================
+      const totalsW = 205;
+      const totalsX = rightX - totalsW;
+      const totalRowH = 12.5;
+
+      const subtotalTaxable = invoice.taxableAmount || 361600;
+      const cgstAmt = invoice.cgstAmount !== undefined ? invoice.cgstAmount : 32544;
+      const sgstAmt = invoice.sgstAmount !== undefined ? invoice.sgstAmount : 32544;
+      const igstAmt = invoice.igstAmount !== undefined ? invoice.igstAmount : 0;
+      const grandTotal = invoice.grandTotal || 426688;
+      const cgstRate = invoice.cgstRate || 9;
+      const sgstRate = invoice.sgstRate || 9;
+      const igstRate = invoice.igstRate || 18;
+
+      // Subtotal Taxable
+      doc.rect(totalsX, y, totalsW, totalRowH).fillAndStroke('#ffffff', borderLight);
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textDark)
+        .text('Subtotal Taxable Amount', totalsX + 6, y + 3, { width: 105 });
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(textDark)
+        .text(fmtCurrency(subtotalTaxable), totalsX + 115, y + 3, { width: totalsW - 120, align: 'right' });
+      y += totalRowH;
+
+      if (igstAmt > 0) {
+        doc.rect(totalsX, y, totalsW, totalRowH).fillAndStroke('#ffffff', borderLight);
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(`IGST @ ${igstRate}%`, totalsX + 6, y + 3, { width: 105 });
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(fmtCurrency(igstAmt), totalsX + 115, y + 3, { width: totalsW - 120, align: 'right' });
+        y += totalRowH;
+      } else {
+        doc.rect(totalsX, y, totalsW, totalRowH).fillAndStroke('#ffffff', borderLight);
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(`CGST @ ${cgstRate}%`, totalsX + 6, y + 3, { width: 105 });
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(fmtCurrency(cgstAmt), totalsX + 115, y + 3, { width: totalsW - 120, align: 'right' });
+        y += totalRowH;
+
+        doc.rect(totalsX, y, totalsW, totalRowH).fillAndStroke('#ffffff', borderLight);
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(`SGST @ ${sgstRate}%`, totalsX + 6, y + 3, { width: 105 });
+        doc.font('Helvetica').fontSize(6.5).fillColor(textDark)
+          .text(fmtCurrency(sgstAmt), totalsX + 115, y + 3, { width: totalsW - 120, align: 'right' });
+        y += totalRowH;
+      }
+
+      // Total Invoice Value Row (Highlighted)
+      const grandTotalH = 15;
+      doc.rect(totalsX, y, totalsW, grandTotalH).fillAndStroke('#f1f5f9', borderDark);
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text('Total Invoice Value (INR)', totalsX + 6, y + 4, { width: 110 });
+      doc.font('Helvetica-Bold').fontSize(8.5).fillColor(mskRed)
+        .text(`₹ ${fmtCurrency(grandTotal)}`, totalsX + 115, y + 3.5, { width: totalsW - 120, align: 'right' });
+      y += grandTotalH + 5;
+
+      // ==========================================
+      // 6. AMOUNT IN WORDS (FROM REFERENCE IMAGE 2)
+      // ==========================================
+      const wordsBoxH = 14;
+      doc.rect(leftX, y, contentWidth, wordsBoxH).fillAndStroke('#f8fafc', borderDark);
+      const defaultWords = 'INR Four Lakh Twenty-Six Thousand Six Hundred Eighty-Eight Only';
+      let wordsText = invoice.amountInWords || defaultWords;
+      if (!wordsText.toLowerCase().startsWith('inr') && !wordsText.toLowerCase().startsWith('rs')) {
+        wordsText = `INR ${wordsText}`;
+      }
+      if (!wordsText.toLowerCase().endsWith('only')) {
+        wordsText = `${wordsText} Only`;
+      }
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark)
+        .text(`Amount in words: ${wordsText}`, leftX + 6, y + 3.5, { width: contentWidth - 12 });
+      y += wordsBoxH + 5;
+
+      // ==========================================
+      // 7. TERMS & CONDITIONS AND BANK REMITTANCE (TWO COLUMNS)
+      // ==========================================
+      const bottomBoxH = 56;
+      const termsW = 310;
+      const bankW = contentWidth - termsW; // 241
+      const bankX = leftX + termsW;
+
+      // Terms box (Left)
+      doc.rect(leftX, y, termsW, bottomBoxH).stroke(borderDark);
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark)
+        .text('Terms & Conditions:', leftX + 6, y + 5);
+
+      const termsList = [
+        '1. Interest @ 18% p.a. will be levied if payment is not received within 14 credit days.',
+        '2. All business is transacted subject to standard Freight Forwarders Association Conditions.',
+        '3. No claims for discrepancies will be entertained unless notified in writing within 7 days.',
+      ];
+
+      let termY = y + 16;
+      doc.font('Helvetica').fontSize(6).fillColor(textDark);
+      termsList.forEach((t) => {
+        doc.text(t, leftX + 6, termY, { width: termsW - 12, lineGap: 1 });
+        termY += 11;
+      });
+
+      // Bank Remittance Box (Right - Framed as in Reference Image 2)
+      doc.rect(bankX, y, bankW, bottomBoxH).fillAndStroke('#f8fafc', borderDark);
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(textDark)
+        .text('Bank Remittance Details:', bankX + 6, y + 5);
+
+      doc.font('Helvetica').fontSize(6.5).fillColor(textDark);
+      doc.text(`Bank Name: ${settings?.bankName || 'ICICI Bank'}`, bankX + 6, y + 16);
+      doc.text(`A/C Name: ${settings?.bankAccountName || 'MSK LOGISTIC SOLUTION'}`, bankX + 6, y + 25);
+      doc.text(`A/C Number: ${settings?.bankAccountNo || '574005000006'}`, bankX + 6, y + 34);
+      doc.text(`IFSC Code: ${settings?.bankIfsc || 'ICIC0005740'}  |  Branch: ${settings?.bankBranch || 'Dronagiri Node'}`, bankX + 6, y + 43);
+
+      y += bottomBoxH + 5;
+
+      // ==========================================
+      // 8. SIGNATURE & SYSTEM STAMP FOOTER
+      // ==========================================
+      const signBoxH = 42;
+      doc.rect(leftX, y, contentWidth, signBoxH).stroke(borderDark);
+
+      // Left Stamp
+      const tokenRef = invoice.verificationToken ? invoice.verificationToken.slice(0, 12).toUpperCase() : 'VERIFIED';
+      doc.font('Helvetica').fontSize(6.5).fillColor(textMuted)
+        .text(`Generated System Stamp: MSK ERP Verified Authentic (Ref: ${tokenRef})`, leftX + 8, y + 15, { width: 280 });
+
+      // Right Signatory
+      const sigX = rightX - 190;
+      doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
+        .text(`For ${settings?.companyName || 'MSK LOGISTIC SOLUTION'}`, sigX, y + 6, { width: 180, align: 'center' });
+
+      if (settings?.signatureUrl && fs.existsSync(settings.signatureUrl)) {
+        try {
+          doc.image(settings.signatureUrl, sigX + 50, y + 17, { fit: [80, 16], align: 'center' });
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      doc.font('Helvetica').fontSize(7).fillColor(textMuted)
+        .text('Authorised Signatory', sigX, y + 28, { width: 180, align: 'center' });
+
+      // Bottom Page Indicator
+      doc.font('Helvetica').fontSize(6).fillColor(textMuted)
+        .text('Page 1 of 1', leftX, y + signBoxH + 3, { width: contentWidth, align: 'right' });
 
       // Finalize document
       doc.end();

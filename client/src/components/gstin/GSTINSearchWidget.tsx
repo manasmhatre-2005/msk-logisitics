@@ -215,7 +215,7 @@ export const GSTINSearchWidget: React.FC<GSTINSearchWidgetProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-xs font-medium text-slate-500">Legal Business Name</p>
+              <p className="text-xs font-medium text-slate-500">Party Name</p>
               <p className="text-sm font-bold text-slate-900 mt-0.5">{result.existingParty.legalName}</p>
               <p className="text-xs text-slate-500 mt-2">GSTIN</p>
               <p className="text-xs font-mono font-semibold text-blue-700">{result.existingParty.gstin}</p>
@@ -294,20 +294,22 @@ export const GSTINSearchWidget: React.FC<GSTINSearchWidgetProps> = ({
             /* Editable Fields Form */
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Legal Business Name</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Party Name</label>
                 <input
                   type="text"
                   value={editedParty.legalName}
                   onChange={(e) => setEditedParty({ ...editedParty, legalName: e.target.value })}
+                  placeholder="e.g. MSK Logistics"
                   className="w-full text-xs rounded border border-slate-300 p-2 bg-white"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Trade Name</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Exporter Name</label>
                 <input
                   type="text"
                   value={editedParty.tradeName || ''}
                   onChange={(e) => setEditedParty({ ...editedParty, tradeName: e.target.value })}
+                  placeholder="e.g. MSK Logistics Exporter"
                   className="w-full text-xs rounded border border-slate-300 p-2 bg-white"
                 />
               </div>
@@ -343,11 +345,11 @@ export const GSTINSearchWidget: React.FC<GSTINSearchWidgetProps> = ({
             /* Read-only Display */
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <p className="font-medium text-slate-400">Legal Business Name</p>
+                <p className="font-medium text-slate-400">Party Name</p>
                 <p className="text-sm font-bold text-slate-900 mt-0.5">{editedParty?.legalName || result.legalName}</p>
               </div>
               <div>
-                <p className="font-medium text-slate-400">Trade Name</p>
+                <p className="font-medium text-slate-400">Exporter Name</p>
                 <p className="font-semibold text-slate-800 mt-0.5">{editedParty?.tradeName || result.tradeName || 'N/A'}</p>
               </div>
               <div>

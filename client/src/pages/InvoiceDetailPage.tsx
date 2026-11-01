@@ -9,15 +9,19 @@ import {
   CheckCircle2,
   CreditCard,
   Loader2,
-  LayoutTemplate,
-  Check,
+  ShieldCheck,
+  Box,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { api } from '../services/api';
-import { Invoice, CompanySettings, BillFormatId, BILL_FORMAT_SLOTS } from '../types/index';
+import { Invoice, CompanySettings } from '../types/index';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
 import { WhatsAppSendModal } from '../components/whatsapp/WhatsAppSendModal';
 import { EmailSendModal } from '../components/email/EmailSendModal';
+import { EmptyContainerPrintView } from '../components/empty-container/EmptyContainerPrintView';
+import { HtBillPrintView } from '../components/ht-bill/HtBillPrintView';
+import { CreditNotePrintView } from '../components/credit-note/CreditNotePrintView';
 import { getCurrencySymbol, formatCurrency } from '../utils/currency';
 
 interface InvoiceDetailPageProps {
@@ -41,12 +45,35 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
   const [payNotes, setPayNotes] = useState('');
   const [recordingPay, setRecordingPay] = useState(false);
 
-  // Template Slot State (5 slots)
-  const [activeTemplate, setActiveTemplate] = useState<BillFormatId>('format-1');
-
   // Sharing Modals State
   const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (!invoice?.verificationToken) return;
+    const baseUrl = window.location.origin;
+    let verifyPrefix = 'empty';
+    if (invoice.billType === 'HT_BILL') verifyPrefix = 'ht';
+    else if (invoice.billType === 'CREDIT_NOTE') verifyPrefix = 'cn';
+    const verifyUrl = `${baseUrl}/verify/${verifyPrefix}/${invoice.verificationToken}`;
+    QRCode.toDataURL(verifyUrl, {
+      width: 140,
+      margin: 1,
+      color: { dark: '#0f172a', light: '#ffffff' },
+      errorCorrectionLevel: 'M',
+    }).then(setQrDataUrl).catch(() => {});
+  }, [invoice]);
+
+  const calcDays = (d1: any, d2: any, stored?: number) => {
+    if (stored !== undefined && stored !== null && Number(stored) > 0) return `${stored} Days`;
+    if (!d1 || !d2) return '-';
+    const dt1 = new Date(d1).getTime();
+    const dt2 = new Date(d2).getTime();
+    if (isNaN(dt1) || isNaN(dt2) || dt2 < dt1) return '-';
+    const diff = Math.max(0, Math.round((dt2 - dt1) / (1000 * 3600 * 24)));
+    return `${diff} Days`;
+  };
 
   const fetchInvoice = async () => {
     setLoading(true);
@@ -59,11 +86,6 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
       if (settsData) setSettings(settsData);
       if (invData) {
         setPayAmount(String(invData.balanceAmount));
-        // Extract saved template or default to format-1
-        if (invData.notes && invData.notes.includes('[TEMPLATE:')) {
-          const match = invData.notes.match(/\[TEMPLATE:(format-[1-5])\]/);
-          if (match) setActiveTemplate(match[1] as BillFormatId);
-        }
       }
     } catch (e) {
       console.error(e);
@@ -201,7 +223,7 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
           )}
 
           <a
-            href={api.getInvoicePdfUrl(invoice.id, activeTemplate)}
+            href={api.getInvoicePdfUrl(invoice.id)}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
@@ -236,54 +258,34 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
         </div>
       </div>
 
-      {/* 5 Bill Format Selection Slots */}
-      <div className="bg-white border border-slate-300 rounded-xl p-3.5 shadow-2xs no-print">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-            <LayoutTemplate className="w-4 h-4 text-red-600" />
-            <span>VIEW WITH TEMPLATE FORMAT (5 SLOTS):</span>
-          </span>
-          <span className="text-[11px] text-slate-500 font-medium">
-            Format 1 matches official company reference (Image 3)
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {BILL_FORMAT_SLOTS.map((slot) => {
-            const isSelected = activeTemplate === slot.id;
-            return (
-              <button
-                key={slot.id}
-                onClick={() => setActiveTemplate(slot.id)}
-                className={`flex flex-col items-start p-2 rounded-lg border text-left transition-all ${
-                  isSelected
-                    ? 'border-red-600 bg-red-50/60 ring-2 ring-red-600/20 text-red-950 font-bold'
-                    : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span className="text-xs font-bold">{slot.name.split(' (')[0]}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
-                </div>
-                <span className="text-[10px] text-slate-500 font-normal truncate w-full mt-0.5">
-                  {slot.referenceTag}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Invoice Document Frame (A4 Layout strictly matching Image 3) */}
-      <div className="bg-white border border-slate-400 rounded-xl p-6 sm:p-8 shadow-sm text-[11px] space-y-0 font-sans">
-        
-        {/* Template Slot Badge (for slots 2-5) */}
-        {activeTemplate !== 'format-1' && (
-          <div className="mb-2 p-1.5 bg-slate-100 border border-slate-300 rounded text-center text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-            {BILL_FORMAT_SLOTS.find((s) => s.id === activeTemplate)?.name} — TEMPLATE SLOT ACTIVE (READY FOR REFERENCE DESIGN)
-          </div>
-        )}
-
+      {/* Dynamic Document Rendering by Bill Type (Requirement 13: Permanent Bill Format Preservation) */}
+      {invoice.billType === 'EMPTY_CONTAINER' ? (
+        <EmptyContainerPrintView
+          invoice={invoice}
+          isOpen={true}
+          onClose={() => {}}
+          companySettings={settings}
+          displayMode="inline"
+        />
+      ) : invoice.billType === 'HT_BILL' ? (
+        <HtBillPrintView
+          invoice={invoice}
+          isOpen={true}
+          onClose={() => {}}
+          companySettings={settings}
+          displayMode="inline"
+        />
+      ) : invoice.billType === 'CREDIT_NOTE' ? (
+        <CreditNotePrintView
+          invoice={invoice}
+          isOpen={true}
+          onClose={() => {}}
+          companySettings={settings}
+          displayMode="inline"
+        />
+      ) : (
+        /* Standard Tax Invoice Document Frame (A4 Layout strictly matching Image 3) */
+        <div className="bg-white border border-slate-400 rounded-xl p-6 sm:p-8 shadow-sm text-[11px] space-y-0 font-sans">
         {/* 1. Top Header Box: ISO Logo Box (Left), Company Info (Center), MSK Logo Box (Right) */}
         <div className="border border-slate-800 grid grid-cols-12 items-center p-3 gap-2">
           {/* Framed ISO 9001:2015 Logo Box */}
@@ -649,6 +651,7 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
           </div>
         </div>
       </div>
+      )}
 
       {/* Payment Modal */}
       <Modal
@@ -744,7 +747,7 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
         isOpen={emailModalOpen}
         onClose={() => setEmailModalOpen(false)}
         invoice={invoice}
-        templateId={activeTemplate}
+        templateId="format-1"
         onSuccess={() => fetchInvoice()}
       />
     </div>

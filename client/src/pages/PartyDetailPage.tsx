@@ -145,7 +145,7 @@ export const PartyDetailPage: React.FC<PartyDetailPageProps> = ({
                 {party.gstStatus}
               </Badge>
             </div>
-            {party.tradeName && <p className="text-xs text-slate-500 mt-0.5">Trade Name: {party.tradeName}</p>}
+            {party.tradeName && <p className="text-xs text-slate-500 mt-0.5">Exporter Name: {party.tradeName}</p>}
             <p className="text-xs font-mono font-semibold text-blue-700 mt-1">GSTIN: {party.gstin}</p>
           </div>
 
@@ -208,8 +208,8 @@ export const PartyDetailPage: React.FC<PartyDetailPageProps> = ({
               </button>
             </div>
             <div className="space-y-2 text-xs">
-              <p><span className="text-slate-400">Legal Name:</span> <strong className="text-slate-900">{party.legalName}</strong></p>
-              <p><span className="text-slate-400">Trade Name:</span> <span className="text-slate-800">{party.tradeName || 'N/A'}</span></p>
+              <p><span className="text-slate-400">Party Name:</span> <strong className="text-slate-900">{party.legalName}</strong></p>
+              <p><span className="text-slate-400">Exporter Name:</span> <span className="text-slate-800">{party.tradeName || 'N/A'}</span></p>
               <p><span className="text-slate-400">Vendor Code:</span> <span className="font-mono text-slate-800">{party.vendorCode || 'N/A'}</span></p>
               <p><span className="text-slate-400">Notes:</span> <span className="text-slate-600">{party.notes || 'None'}</span></p>
             </div>
@@ -437,21 +437,25 @@ export const PartyDetailPage: React.FC<PartyDetailPageProps> = ({
           {editSection === 'party' && (
             <>
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Legal Name</label>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Party Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={editFormData.legalName || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, legalName: e.target.value })}
+                  placeholder="e.g. MSK Logistics"
                   className="w-full rounded border border-slate-300 p-2"
                 />
               </div>
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Trade Name</label>
+                <label className="block font-medium text-slate-700 mb-1">Exporter Name</label>
                 <input
                   type="text"
                   value={editFormData.tradeName || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, tradeName: e.target.value })}
+                  placeholder="e.g. MSK Logistics Exporter"
                   className="w-full rounded border border-slate-300 p-2"
                 />
               </div>

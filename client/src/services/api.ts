@@ -12,6 +12,7 @@ import {
   AuditLog,
   CompanySettings,
   GSTVerificationResult,
+  PartyOutstandingSummary,
 } from '../types/index';
 
 const API_BASE = '/api';
@@ -37,6 +38,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
 
   if (!res.ok) {
+    if (res.status === 401 && !endpoint.includes('/auth/login')) {
+      localStorage.removeItem('logibill_token');
+    }
     let errMsg = `Request failed (${res.status})`;
     try {
       const errData = await res.json();
@@ -164,6 +168,12 @@ export const api = {
     request<{ message: string }>(`/charges/${id}`, { method: 'DELETE' }),
 
   // Invoices
+  getNextInvoiceNumber: (billType: string, invoiceDate?: string) => {
+    const params = new URLSearchParams();
+    if (billType) params.append('billType', billType);
+    if (invoiceDate) params.append('invoiceDate', invoiceDate);
+    return request<{ nextInvoiceNumber: string }>(`/invoices/next-number?${params.toString()}`);
+  },
   getInvoices: (status?: string, partyId?: string, search?: string) => {
     const params = new URLSearchParams();
     if (status) params.append('status', status);
@@ -177,11 +187,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  createInvoice: (data: any) =>
-    request<Invoice>('/invoices', {
+  createInvoice: (data: any) => {
+    const idempotencyKey =
+      data.idempotencyKey || `ik_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    return request<Invoice>('/invoices', {
       method: 'POST',
-      body: JSON.stringify(data),
-    }),
+      headers: {
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify({ ...data, idempotencyKey }),
+    });
+  },
   updateInvoice: (id: string, data: any) =>
     request<Invoice>(`/invoices/${id}`, {
       method: 'PUT',
@@ -199,21 +215,45 @@ export const api = {
   getInvoicePdfUrl: (id: string, templateId?: string) =>
     `/api/invoices/${id}/pdf${templateId ? `?templateId=${encodeURIComponent(templateId)}` : ''}`,
   verifyCreditNote: (token: string) => request<any>(`/credit-notes/verify/${token}`),
+  verifyInvoice: (token: string) => request<any>(`/invoices/verify/${token}`),
+  verifyHtBill: (token: string) => request<any>(`/invoices/verify/${token}`),
   sendInvoiceEmail: (id: string, data: { recipientEmail: string; recipientName?: string; ccEmail?: string; subject?: string; customMessage?: string; templateId?: string }) =>
     request<any>(`/invoices/${id}/email`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  // Payments
+  // Payments & Party Outstanding
+  getPartyOutstanding: (partyId?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (partyId) params.append('partyId', partyId);
+    if (status) params.append('status', status);
+    return request<PartyOutstandingSummary[]>(`/payments/outstanding?${params.toString()}`);
+  },
   getPayments: (partyId?: string, invoiceId?: string) => {
     const params = new URLSearchParams();
     if (partyId) params.append('partyId', partyId);
     if (invoiceId) params.append('invoiceId', invoiceId);
     return request<Payment[]>(`/payments?${params.toString()}`);
   },
-  recordPayment: (data: { invoiceId: string; amount: number; paymentDate?: string; paymentMode?: string; referenceNumber?: string; notes?: string }) =>
-    request<Payment>('/payments', {
+  recordPayment: (data: {
+    partyId?: string;
+    invoiceId?: string;
+    amount?: number;
+    tdsRate?: number;
+    tdsAmount?: number;
+    paymentDate?: string;
+    paymentMode?: string;
+    referenceNumber?: string;
+    notes?: string;
+    allocations?: Array<{
+      invoiceId: string;
+      amount: number;
+      tdsRate?: number;
+      tdsAmount?: number;
+    }>;
+  }) =>
+    request<any>('/payments', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

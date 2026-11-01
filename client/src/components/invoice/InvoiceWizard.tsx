@@ -17,14 +17,12 @@ import {
   FileText,
   Mail,
   MessageSquare,
-  LayoutTemplate,
   Percent,
-  Check,
   Phone,
   Info,
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { Party, Exporter, Job, Container, ChargeMaster, Invoice, CompanySettings, Currency, BillFormatId, BILL_FORMAT_SLOTS, BillType, BILL_TYPE_LIST } from '../../types/index';
+import { Party, Exporter, Job, Container, ChargeMaster, Invoice, CompanySettings, Currency, BillFormatId, BillType, BILL_TYPE_LIST, CONTAINER_SIZES, CONTAINER_TYPES } from '../../types/index';
 import { Badge } from '../common/Badge';
 import { DateCalculationBox } from '../common/DateCalculationBox';
 import { getCurrencySymbol, formatCurrency } from '../../utils/currency';
@@ -90,8 +88,8 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
     '1. Payment due within 15 days of invoice date.\n2. Interest @ 18% p.a. charged for delayed payments.\n3. Subject to Mumbai Jurisdiction.'
   );
 
-  // Template Slots (5 Slots)
-  const [templateId, setTemplateId] = useState<BillFormatId>('format-1');
+  // Invoice Format (Standard Official Format 1)
+  const templateId: BillFormatId = 'format-1';
 
   // Editable GST Rates & Supply Type
   const [forceTaxType, setForceTaxType] = useState<'AUTO' | 'INTRA_STATE' | 'INTER_STATE'>('AUTO');
@@ -111,8 +109,8 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
   const [containers, setContainers] = useState<any[]>([
     {
       containerNumber: 'TGBU3802319',
-      size: '40 FT HC',
-      type: 'DRY',
+      size: '40 FT',
+      type: 'HC',
       cartingDate: '2026-08-10',
       emptyGateInDate: '2026-08-12',
       stuffingDate: '2026-08-18',
@@ -276,8 +274,8 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
       ...containers,
       {
         containerNumber: `MSKU${Math.floor(1000000 + Math.random() * 9000000)}`,
-        size: '20 FT',
-        type: 'DRY',
+        size: '40 FT',
+        type: 'HC',
         cartingDate: new Date().toISOString().split('T')[0],
         emptyGateInDate: new Date().toISOString().split('T')[0],
         stuffingDate: '',
@@ -341,6 +339,7 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
         containers,
         discountAmount: invoiceLevelDiscount,
         currency,
+        billType: billType || 'FORWARDING',
         notes,
         terms,
         status: finalStatus,
@@ -731,12 +730,11 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
                     <select
                       value={cont.size}
                       onChange={(e) => handleUpdateContainer(idx, 'size', e.target.value)}
-                      className="w-full rounded border border-slate-300 p-1 bg-white"
+                      className="w-full rounded border border-slate-300 p-1 bg-white font-medium"
                     >
-                      <option value="20 FT">20 FT</option>
-                      <option value="40 FT">40 FT</option>
-                      <option value="40 FT HC">40 FT HC</option>
-                      <option value="45 FT">45 FT</option>
+                      {CONTAINER_SIZES.map((sz) => (
+                        <option key={sz} value={sz}>{sz}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -744,12 +742,11 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
                     <select
                       value={cont.type}
                       onChange={(e) => handleUpdateContainer(idx, 'type', e.target.value)}
-                      className="w-full rounded border border-slate-300 p-1 bg-white"
+                      className="w-full rounded border border-slate-300 p-1 bg-white font-medium"
                     >
-                      <option value="DRY">DRY</option>
-                      <option value="REEFER">REEFER</option>
-                      <option value="FLAT RACK">FLAT RACK</option>
-                      <option value="OPEN TOP">OPEN TOP</option>
+                      {CONTAINER_TYPES.map((tp) => (
+                        <option key={tp} value={tp}>{tp}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -1267,50 +1264,8 @@ export const InvoiceWizard: React.FC<InvoiceWizardProps> = ({
               </div>
             </div>
 
-            {/* Template Selection Slots (5 Slots) */}
-            <div className="rounded-xl border border-slate-300 bg-white p-3 shadow-2xs">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <LayoutTemplate className="w-4 h-4 text-red-600" />
-                  <span>INVOICE TEMPLATE SELECTION (5 SLOTS):</span>
-                </span>
-                <span className="text-[11px] text-slate-500 font-medium">Format 1 is active official reference</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {BILL_FORMAT_SLOTS.map((s) => {
-                  const isSelected = templateId === s.id;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      onClick={() => setTemplateId(s.id)}
-                      className={`p-2 rounded-lg border text-left text-xs transition-all ${
-                        isSelected
-                          ? 'border-red-600 bg-red-50 text-red-950 font-bold ring-2 ring-red-600/20'
-                          : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{s.name.split(' (')[0]}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-red-600" />}
-                      </div>
-                      <span className="text-[10px] text-slate-500 font-normal truncate block mt-0.5">
-                        {s.referenceTag}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* A4 Invoice Preview Box */}
             <div className="bg-white border border-slate-400 rounded-xl p-6 shadow-md text-[11px] space-y-0 font-sans">
-              {templateId !== 'format-1' && (
-                <div className="mb-2 p-1.5 bg-slate-100 border border-slate-300 rounded text-center text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                  {BILL_FORMAT_SLOTS.find((s) => s.id === templateId)?.name} — TEMPLATE SLOT ACTIVE (READY FOR REFERENCE DESIGN)
-                </div>
-              )}
-
               {/* Header */}
               <div className="border border-slate-800 grid grid-cols-12 items-center p-2 gap-2">
                 {/* Framed ISO logo box with text "ISO CERTIFIED 9001:2015" */}

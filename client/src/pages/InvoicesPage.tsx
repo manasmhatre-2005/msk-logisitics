@@ -123,6 +123,8 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
 
   const statusTabs = [
     { id: 'ALL', label: 'All Invoices' },
+    { id: 'EMPTY_CONTAINER', label: 'Empty Container Bills' },
+    { id: 'HT_BILL', label: 'H & T Bills' },
     { id: 'CREDIT_NOTE', label: 'Credit Notes' },
     { id: 'DRAFT', label: 'Drafts' },
     { id: 'FINALIZED', label: 'Finalized' },
@@ -235,9 +237,19 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
                         >
                           {inv.invoiceNumber}
                         </button>
+                        {inv.billType === 'EMPTY_CONTAINER' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-teal-100 text-teal-800 border border-teal-300">
+                            Empty Container
+                          </span>
+                        )}
                         {inv.billType === 'CREDIT_NOTE' && (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-purple-100 text-purple-700 border border-purple-200">
                             Credit Note
+                          </span>
+                        )}
+                        {inv.billType === 'HT_BILL' && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-100 text-amber-800 border border-amber-300">
+                            H & T Bill
                           </span>
                         )}
                       </div>

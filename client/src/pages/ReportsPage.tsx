@@ -141,7 +141,7 @@ export const ReportsPage: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                   <tr>
-                    <th className="p-3.5">Party Legal Name</th>
+                    <th className="p-3.5">Party Name</th>
                     <th className="p-3.5">GSTIN</th>
                     <th className="p-3.5">State</th>
                     <th className="p-3.5 text-center">Invoices</th>

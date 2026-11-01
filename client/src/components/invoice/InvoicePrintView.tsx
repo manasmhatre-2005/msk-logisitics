@@ -1,43 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { Invoice, CompanySettings, BillFormatId, BILL_FORMAT_SLOTS } from '../../types/index';
-import { Printer, ArrowLeft, Download, Mail, MessageSquare, LayoutTemplate, Check } from 'lucide-react';
+import { Invoice, CompanySettings } from '../../types/index';
+import { Printer, ArrowLeft, Download, Mail, MessageSquare } from 'lucide-react';
 import { api } from '../../services/api';
 import { getCurrencySymbol, formatCurrency } from '../../utils/currency';
 import { WhatsAppSendModal } from '../whatsapp/WhatsAppSendModal';
 import { EmailSendModal } from '../email/EmailSendModal';
+import { CreditNotePrintView } from '../credit-note/CreditNotePrintView';
+import { HtBillPrintView } from '../ht-bill/HtBillPrintView';
+import { EmptyContainerPrintView } from '../empty-container/EmptyContainerPrintView';
 
 interface InvoicePrintViewProps {
   invoice: Invoice;
   onClose: () => void;
-  defaultTemplateId?: BillFormatId;
 }
 
 export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
   invoice,
   onClose,
-  defaultTemplateId = 'format-1',
 }) => {
   const [settings, setSettings] = useState<CompanySettings | null>(null);
-
-  // Initialize template from invoice metadata, props, or default
-  const getInitialTemplate = (): BillFormatId => {
-    if (invoice.templateId && ['format-1', 'format-2', 'format-3', 'format-4', 'format-5'].includes(invoice.templateId)) {
-      return invoice.templateId;
-    }
-    if (invoice.notes && invoice.notes.includes('[TEMPLATE:')) {
-      const match = invoice.notes.match(/\[TEMPLATE:(format-[1-5])\]/);
-      if (match) return match[1] as BillFormatId;
-    }
-    return defaultTemplateId;
-  };
-
-  const [activeTemplate, setActiveTemplate] = useState<BillFormatId>(getInitialTemplate());
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
 
   useEffect(() => {
     api.getSettings().then(setSettings).catch(() => {});
   }, []);
+
+  if (invoice.billType === 'EMPTY_CONTAINER') {
+    return <EmptyContainerPrintView invoice={invoice} isOpen={true} onClose={onClose} companySettings={settings} />;
+  }
+  if (invoice.billType === 'HT_BILL') {
+    return <HtBillPrintView invoice={invoice} isOpen={true} onClose={onClose} companySettings={settings} />;
+  }
+  if (invoice.billType === 'CREDIT_NOTE') {
+    return <CreditNotePrintView invoice={invoice} isOpen={true} onClose={onClose} />;
+  }
 
   const formatDate = (dateVal: string | Date | undefined | null) => {
     if (!dateVal) return '-';
@@ -81,10 +78,10 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
 
   // Handle PDF Download
   const handleDownloadPdf = () => {
-    const url = api.getInvoicePdfUrl(invoice.id, activeTemplate);
+    const url = api.getInvoicePdfUrl(invoice.id);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Invoice_${invoice.invoiceNumber.replace(/[\/\\]/g, '_')}_${activeTemplate}.pdf`;
+    link.download = `Invoice_${invoice.invoiceNumber.replace(/[\/\\]/g, '_')}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -138,56 +135,10 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Template Selector Bar (5 Bill Format Slots) */}
-        <div className="bg-white border border-slate-300 rounded-xl p-3 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-              <LayoutTemplate className="w-4 h-4 text-red-600" />
-              <span>SELECT INVOICE TEMPLATE (5 SLOTS):</span>
-            </div>
-            <span className="text-[11px] text-slate-500 font-medium">
-              Changing template preserves all underlying transaction data & calculations
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-            {BILL_FORMAT_SLOTS.map((slot) => {
-              const isActive = activeTemplate === slot.id;
-              return (
-                <button
-                  key={slot.id}
-                  onClick={() => setActiveTemplate(slot.id)}
-                  className={`flex flex-col items-start p-2 rounded-lg border text-left transition-all ${
-                    isActive
-                      ? 'border-red-600 bg-red-50/60 ring-2 ring-red-600/20 text-red-950 font-bold'
-                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs font-bold">{slot.name.split(' (')[0]}</span>
-                    {isActive && <Check className="w-3.5 h-3.5 text-red-600 shrink-0" />}
-                  </div>
-                  <span className="text-[10px] text-slate-500 font-normal mt-0.5 truncate w-full">
-                    {slot.referenceTag}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       {/* A4 Sheet Following Exact Client Sample Invoice (Image 3) */}
       <div className="max-w-4xl mx-auto bg-white p-6 sm:p-8 border border-slate-400 shadow-xl print:shadow-none print:border-none print:p-2 text-slate-900 text-[11px] leading-tight font-sans">
-        
-        {/* Template Slot Badge (visible for slots 2-5) */}
-        {activeTemplate !== 'format-1' && (
-          <div className="mb-2 p-1.5 bg-slate-100 border border-slate-300 rounded text-center text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-            {BILL_FORMAT_SLOTS.find((s) => s.id === activeTemplate)?.name} — TEMPLATE SLOT ACTIVE (READY FOR REFERENCE DESIGN)
-          </div>
-        )}
-
         {/* 1. Top Header Box: ISO Logo, Company Heading, MSK Logo */}
         <div className="border border-slate-800 grid grid-cols-12 items-center p-2 gap-2">
           {/* ISO 9001:2015 Logo Box (Left) - Framed as in Image 3 */}
@@ -553,7 +504,7 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
           isOpen={isEmailOpen}
           onClose={() => setIsEmailOpen(false)}
           invoice={invoice}
-          templateId={activeTemplate}
+          templateId="format-1"
         />
       )}
     </div>

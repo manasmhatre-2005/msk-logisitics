@@ -188,7 +188,7 @@ export const PartiesPage: React.FC<PartiesPageProps> = ({
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
               <tr>
-                <th className="p-3.5">Party & Legal Name</th>
+                <th className="p-3.5">Party Name & Exporter Name</th>
                 <th className="p-3.5">GSTIN & Status</th>
                 <th className="p-3.5">Contact Person</th>
                 <th className="p-3.5">Location</th>
@@ -318,24 +318,24 @@ export const PartiesPage: React.FC<PartiesPageProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-medium text-slate-700 mb-1">
-                Legal Business Name <span className="text-rose-500">*</span>
+                Party Name <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={newParty.legalName}
                 onChange={(e) => setNewParty({ ...newParty, legalName: e.target.value })}
-                placeholder="e.g. GREENWICH MARIDIAN LOGISTICS INDIA PVT. LTD."
+                placeholder="e.g. MSK Logistics"
                 className="w-full rounded border border-slate-300 p-2 text-xs"
               />
             </div>
             <div>
-              <label className="block font-medium text-slate-700 mb-1">Trade Name</label>
+              <label className="block font-medium text-slate-700 mb-1">Exporter Name</label>
               <input
                 type="text"
                 value={newParty.tradeName}
                 onChange={(e) => setNewParty({ ...newParty, tradeName: e.target.value })}
-                placeholder="e.g. GREENWICH MARIDIAN"
+                placeholder="e.g. MSK Logistics Exporter"
                 className="w-full rounded border border-slate-300 p-2 text-xs"
               />
             </div>
@@ -492,21 +492,25 @@ export const PartiesPage: React.FC<PartiesPageProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Legal Name</label>
+                <label className="block font-medium text-slate-700 mb-1">
+                  Party Name <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={editingParty.legalName}
                   onChange={(e) => setEditingParty({ ...editingParty, legalName: e.target.value })}
+                  placeholder="e.g. MSK Logistics"
                   className="w-full rounded border border-slate-300 p-2 text-xs"
                 />
               </div>
               <div>
-                <label className="block font-medium text-slate-700 mb-1">Trade Name</label>
+                <label className="block font-medium text-slate-700 mb-1">Exporter Name</label>
                 <input
                   type="text"
                   value={editingParty.tradeName || ''}
                   onChange={(e) => setEditingParty({ ...editingParty, tradeName: e.target.value })}
+                  placeholder="e.g. MSK Logistics Exporter"
                   className="w-full rounded border border-slate-300 p-2 text-xs"
                 />
               </div>

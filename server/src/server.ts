@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import app from './app.js';
 import { config } from './config/index.js';
+import { ensureDefaultAccounts } from './services/accountProvisionService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +24,8 @@ app.get('*', (req, res, next) => {
   });
 });
 
-app.listen(config.port, () => {
+app.listen(config.port, '0.0.0.0', async () => {
+  await ensureDefaultAccounts();
   console.log(`🚀 LogiBill ERP Server running on http://localhost:${config.port}`);
   console.log(`📡 GST Integration: ${config.gst.isMock ? 'MOCK SANDBOX' : 'LIVE GSP'}`);
   console.log(`💬 WhatsApp Integration: ${config.whatsapp.isMock ? 'MOCK SANDBOX' : 'LIVE CLOUD API'}`);

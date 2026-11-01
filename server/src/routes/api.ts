@@ -33,27 +33,31 @@ router.post('/invoices/calculate', InvoiceController.calculate);
 router.get('/whatsapp/webhook', WhatsAppController.webhookGet);
 router.post('/whatsapp/webhook', WhatsAppController.webhookPost);
 
-// Public Credit Note Verification (Scan QR to verify)
+// Public Credit Note & Invoice QR Verification (Scan QR to verify)
 router.get('/credit-notes/verify/:token', InvoiceController.verifyCreditNote);
+router.get('/invoices/verify/:token', InvoiceController.verifyInvoice);
+router.get('/ht-bills/verify/:token', InvoiceController.verifyInvoice);
+router.get('/empty-containers/verify/:token', InvoiceController.verifyInvoice);
 
 // Authenticated Routes
 router.use(authenticate);
 
-// Current User & User list
+// Current User & Admin User Management
 router.get('/auth/me', AuthController.getMe);
-router.get('/auth/users', AuthController.listUsers);
+router.get('/auth/users', requireRole(['ADMIN']), AuthController.listUsers);
+router.post('/auth/change-password', AuthController.changePassword);
 
 // Parties
 router.get('/parties', PartyController.getAll);
 router.get('/parties/:id', PartyController.getById);
-router.post('/parties', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), PartyController.create);
-router.put('/parties/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), PartyController.update);
+router.post('/parties', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), PartyController.create);
+router.put('/parties/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), PartyController.update);
 router.delete('/parties/:id', requireRole(['ADMIN']), PartyController.delete);
 
 // Exporters
 router.get('/exporters', ExporterController.getAll);
-router.post('/exporters', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ExporterController.create);
-router.put('/exporters/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ExporterController.update);
+router.post('/exporters', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), ExporterController.create);
+router.put('/exporters/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), ExporterController.update);
 router.delete('/exporters/:id', requireRole(['ADMIN']), ExporterController.delete);
 
 // Jobs & Shipments
@@ -73,24 +77,26 @@ router.post('/containers/calculate-dates', ContainerController.calculateDates);
 
 // Charges & Rates
 router.get('/charges', ChargeController.getAll);
-router.post('/charges', requireRole(['ADMIN', 'BILLING']), ChargeController.create);
-router.put('/charges/:id', requireRole(['ADMIN', 'BILLING']), ChargeController.update);
+router.post('/charges', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ChargeController.create);
+router.put('/charges/:id', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ChargeController.update);
 router.delete('/charges/:id', requireRole(['ADMIN']), ChargeController.delete);
 
 // Invoices
 router.get('/invoices', InvoiceController.getAll);
+router.get('/invoices/next-number', InvoiceController.getNextInvoiceNumber);
 router.get('/invoices/:id', InvoiceController.getById);
 router.post('/invoices/calculate', InvoiceController.calculate);
-router.post('/invoices', requireRole(['ADMIN', 'BILLING']), InvoiceController.create);
-router.put('/invoices/:id', requireRole(['ADMIN', 'BILLING']), InvoiceController.update);
-router.post('/invoices/:id/finalize', requireRole(['ADMIN', 'BILLING']), InvoiceController.finalize);
+router.post('/invoices', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.create);
+router.put('/invoices/:id', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.update);
+router.post('/invoices/:id/finalize', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.finalize);
 router.post('/invoices/:id/cancel', requireRole(['ADMIN']), InvoiceController.cancel);
 router.get('/invoices/:id/pdf', InvoiceController.getPdf);
-router.post('/invoices/:id/email', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), InvoiceController.sendEmail);
+router.post('/invoices/:id/email', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), InvoiceController.sendEmail);
 
 // Payments
+router.get('/payments/outstanding', PaymentController.getPartyOutstanding);
 router.get('/payments', PaymentController.getAll);
-router.post('/payments', requireRole(['ADMIN', 'ACCOUNTANT', 'BILLING']), PaymentController.record);
+router.post('/payments', requireRole(['ADMIN', 'ACCOUNTANT', 'ACCOUNT_MANAGER', 'BILLING']), PaymentController.record);
 
 // Reports & Dashboard
 router.get('/reports/dashboard', ReportController.getDashboardStats);

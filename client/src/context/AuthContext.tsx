@@ -5,7 +5,7 @@ import { api } from '../services/api';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, pass: string) => Promise<void>;
+  login: (email: string, pass: string) => Promise<User>;
   logout: () => void;
   switchDemoRole: (role: UserRole) => Promise<void>;
   hasRole: (roles: UserRole[]) => boolean;
@@ -13,8 +13,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEMO_CREDENTIALS: Record<UserRole, { email: string; pass: string }> = {
-  ADMIN: { email: 'admin@logibill.com', pass: 'admin123' },
+// Local development demo credentials only (ignored in production)
+const DEV_DEMO_CREDENTIALS: Record<UserRole, { email: string; pass: string }> = {
+  ADMIN: { email: 'admin@login', pass: 'admin@123' },
+  ACCOUNT_MANAGER: { email: 'account@login', pass: 'Account@123' },
   BILLING: { email: 'billing@logibill.com', pass: 'billing123' },
   OPERATIONS: { email: 'ops@logibill.com', pass: 'ops123' },
   ACCOUNTANT: { email: 'accountant@logibill.com', pass: 'accountant123' },
@@ -33,11 +35,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const res = await api.getMe();
           setUser(res.user);
         } else {
-          // Default to Admin demo user on first launch for zero friction
-          await switchDemoRole('ADMIN');
+          // Require authentication for all users in production
+          setUser(null);
         }
       } catch (err) {
-        // Fall back to login
+        // Fall back to clean unauthenticated state on token expiration or invalidity
+        localStorage.removeItem('logibill_token');
         setUser(null);
       } finally {
         setLoading(false);
@@ -46,10 +49,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
-  const login = async (email: string, pass: string) => {
+  const login = async (email: string, pass: string): Promise<User> => {
     const res = await api.login(email, pass);
     localStorage.setItem('logibill_token', res.token);
     setUser(res.user);
+    return res.user;
   };
 
   const logout = () => {
@@ -58,7 +62,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const switchDemoRole = async (role: UserRole) => {
-    const creds = DEMO_CREDENTIALS[role];
+    // Only available in development mode for developer testing
+    if (!import.meta.env.DEV) {
+      console.warn('Demo role switching is disabled in production mode.');
+      return;
+    }
+    const creds = DEV_DEMO_CREDENTIALS[role];
     if (creds) {
       await login(creds.email, creds.pass);
     }

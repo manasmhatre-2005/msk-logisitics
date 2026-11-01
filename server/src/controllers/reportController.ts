@@ -7,8 +7,9 @@ export class ReportController {
     try {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      const [totalParties, activeJobs, totalContainers, allInvoices] = await Promise.all([
+      const [totalParties, activeJobs, totalContainers, allInvoices, allRegisteredContainers] = await Promise.all([
         prisma.party.count(),
         prisma.job.count({ where: { status: 'ACTIVE' } }),
         prisma.container.count(),
@@ -20,17 +21,48 @@ export class ReportController {
             totalGst: true,
             balanceAmount: true,
             paidAmount: true,
+            tdsAmount: true,
+            billType: true,
             status: true,
             invoiceDate: true,
           },
         }),
+        prisma.container.findMany({
+          select: {
+            id: true,
+            size: true,
+            status: true,
+            createdAt: true,
+          },
+        }),
       ]);
 
-      const thisMonthInvoices = allInvoices.filter((inv) => new Date(inv.invoiceDate) >= startOfMonth);
-      const thisMonthBilling = thisMonthInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
-      const totalGstCollected = allInvoices.reduce((sum, inv) => sum + inv.totalGst, 0);
-      const outstandingAmount = allInvoices.reduce((sum, inv) => sum + inv.balanceAmount, 0);
-      const pendingInvoicesCount = allInvoices.filter((inv) => inv.balanceAmount > 0).length;
+      const validInvoices = allInvoices.filter((inv) => inv.status !== 'CANCELLED');
+      const thisMonthInvoices = validInvoices.filter((inv) => new Date(inv.invoiceDate) >= startOfMonth);
+      const thisMonthBilling = thisMonthInvoices.reduce((sum, inv) => sum + (inv.billType === 'CREDIT_NOTE' ? -inv.grandTotal : inv.grandTotal), 0);
+      const totalGstCollected = validInvoices.reduce((sum, inv) => sum + inv.totalGst, 0);
+      const outstandingAmount = validInvoices.reduce((sum, inv) => sum + inv.balanceAmount, 0);
+      const pendingInvoicesCount = validInvoices.filter((inv) => inv.balanceAmount > 0).length;
+
+      // TEU Tracking (20 FT = 1 TEU, 40 FT = 2 TEUs)
+      let totalTeus = 0;
+      let todayTeus = 0;
+      let thisMonthTeus = 0;
+      let activeTeus = 0;
+
+      for (const c of allRegisteredContainers) {
+        const teu = (c.size && (c.size.includes('40') || c.size.includes('45'))) ? 2 : 1;
+        totalTeus += teu;
+        if (new Date(c.createdAt) >= startOfToday) {
+          todayTeus += teu;
+        }
+        if (new Date(c.createdAt) >= startOfMonth) {
+          thisMonthTeus += teu;
+        }
+        if (c.status !== 'COMPLETED' && c.status !== 'CANCELLED') {
+          activeTeus += teu;
+        }
+      }
 
       // Recent Invoices
       const recentInvoices = await prisma.invoice.findMany({
@@ -129,6 +161,10 @@ export class ReportController {
         totalGstCollected,
         outstandingAmount,
         pendingInvoicesCount,
+        totalTeus,
+        todayTeus,
+        thisMonthTeus,
+        activeTeus,
         recentInvoices,
         recentJobs,
         activeContainers,

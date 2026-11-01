@@ -6,6 +6,8 @@ import { logAudit } from '../middleware/audit.js';
 import { CalculationService } from '../services/calculationService.js';
 import { PDFService } from '../services/pdfService.js';
 import { EmailService } from '../services/emailService.js';
+import { SequenceService } from '../services/sequenceService.js';
+import { DocumentService } from '../services/documentService.js';
 
 export class InvoiceController {
   static async getAll(req: AuthRequest, res: Response) {
@@ -16,6 +18,10 @@ export class InvoiceController {
       if (status && status !== 'ALL') {
         if (status === 'CREDIT_NOTE') {
           where.billType = 'CREDIT_NOTE';
+        } else if (status === 'HT_BILL') {
+          where.billType = 'HT_BILL';
+        } else if (status === 'EMPTY_CONTAINER') {
+          where.billType = 'EMPTY_CONTAINER';
         } else {
           where.status = String(status);
         }
@@ -91,6 +97,22 @@ export class InvoiceController {
     }
   }
 
+  static async getNextInvoiceNumber(req: AuthRequest, res: Response) {
+    try {
+      const { billType = 'STANDARD', invoiceDate } = req.query;
+      const settings = await prisma.companySettings.findUnique({ where: { id: 'default' } });
+      const d = invoiceDate ? new Date(String(invoiceDate)) : new Date();
+      const nextNumber = await SequenceService.peekNextInvoiceNumber(
+        String(billType),
+        d,
+        settings?.invoicePrefix
+      );
+      return res.json({ nextInvoiceNumber: nextNumber });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   static async calculate(req: AuthRequest, res: Response) {
     try {
       const {
@@ -128,6 +150,7 @@ export class InvoiceController {
       const {
         invoiceNumber: customInvoiceNumber,
         billType = 'STANDARD',
+        idempotencyKey: bodyIdempotencyKey,
         originalInvoiceId,
         originalInvoiceNumber,
         originalInvoiceDate,
@@ -160,6 +183,27 @@ export class InvoiceController {
         forceInterState,
       } = req.body;
 
+      // 1. Concurrency & Retry Idempotency: Prevent duplicate submissions
+      const rawKey = (req.headers['idempotency-key'] as string) || bodyIdempotencyKey;
+      const idempotencyKey = typeof rawKey === 'string' && rawKey.trim().length > 0 ? rawKey.trim() : null;
+
+      if (idempotencyKey) {
+        const existingInvoice = await prisma.invoice.findUnique({
+          where: { idempotencyKey },
+          include: {
+            party: { select: { id: true, legalName: true, gstin: true } },
+            job: { select: { id: true, jobNumber: true } },
+            containers: true,
+            items: { orderBy: { srNo: 'asc' } },
+            payments: { orderBy: { paymentDate: 'desc' } },
+          },
+        });
+        if (existingInvoice) {
+          res.setHeader('Idempotent-Replay', 'true');
+          return res.status(200).json(existingInvoice);
+        }
+      }
+
       if (!partyId) {
         return res.status(400).json({ error: 'Party is required to create an invoice' });
       }
@@ -170,30 +214,6 @@ export class InvoiceController {
       }
 
       const settings = await prisma.companySettings.findUnique({ where: { id: 'default' } });
-
-      // Generate invoice / credit note number if not provided
-      let invoiceNumber = customInvoiceNumber;
-      if (!invoiceNumber) {
-        const invDate = invoiceDate ? new Date(invoiceDate) : new Date();
-        if (billType === 'CREDIT_NOTE') {
-          const year = invDate.getFullYear();
-          const nextYear = String(year + 1).slice(-2);
-          const finYear = `${year}-${nextYear}`;
-          const cnCount = await prisma.invoice.count({ where: { billType: 'CREDIT_NOTE' } });
-          invoiceNumber = `MSK/CN/${finYear}/${String(cnCount + 1).padStart(3, '0')}`;
-        } else {
-          const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-          const monthStr = months[invDate.getMonth()];
-          const yearStr = String(invDate.getFullYear()).slice(-2);
-          const prefix = (settings?.invoicePrefix || 'MSK/HT').trim().replace(/\/+$/, '');
-          const nextSeq = settings?.nextInvoiceSeq || 1;
-          invoiceNumber = `${prefix}${String(nextSeq).padStart(3, '0')}/${monthStr}${yearStr}`;
-          await prisma.companySettings.update({
-            where: { id: 'default' },
-            data: { nextInvoiceSeq: nextSeq + 1 },
-          });
-        }
-      }
 
       // Generate persistent secure verification token for QR code
       const token = verificationToken || crypto.randomBytes(16).toString('hex');
@@ -221,86 +241,47 @@ export class InvoiceController {
         ? (notes.includes('[TEMPLATE:') ? notes.replace(/\[TEMPLATE:format-[1-5]\]/, `[TEMPLATE:${cleanTemplate}]`) : `${notes}\n[TEMPLATE:${cleanTemplate}]`)
         : `[TEMPLATE:${cleanTemplate}]`;
 
-      const invoice = await prisma.invoice.create({
-        data: {
-          invoiceNumber,
-          billType,
-          originalInvoiceId: originalInvoiceId || null,
-          originalInvoiceNumber: originalInvoiceNumber || null,
-          originalInvoiceDate: originalInvoiceDate ? new Date(originalInvoiceDate) : null,
-          reasonForCredit: reasonForCredit || null,
-          verificationToken: token,
-          vesselVoyage: vesselVoyage || null,
-          mblHbl: mblHbl || null,
-          portOfLoading: portOfLoading || null,
-          portOfDischarge: portOfDischarge || null,
-          invoiceDate: invoiceDate ? new Date(invoiceDate) : new Date(),
-          dueDate: dueDate ? new Date(dueDate) : null,
-          partyId,
-          exporterId,
-          jobId,
-          status,
-          currency: currency || 'INR',
-          billToName: party.legalName,
-          billToGstin: party.gstin,
-          billToAddress: party.billingAddress || party.registeredAddress,
-          billToState: party.state,
-          billToStateCode: party.stateCode,
-          consigneeName,
-          consigneeAddress,
-          sbNumbers,
-          subtotal: taxCalc.subtotal,
-          discountAmount: taxCalc.discountAmount,
-          taxableAmount: taxCalc.taxableAmount,
-          isInterState: taxCalc.isInterState,
-          cgstRate: taxCalc.cgstRate,
-          cgstAmount: taxCalc.cgstAmount,
-          sgstRate: taxCalc.sgstRate,
-          sgstAmount: taxCalc.sgstAmount,
-          igstRate: taxCalc.igstRate,
-          igstAmount: taxCalc.igstAmount,
-          totalGst: taxCalc.totalGst,
-          roundOff: taxCalc.roundOff,
-          grandTotal: taxCalc.grandTotal,
-          amountInWords: taxCalc.amountInWords,
-          paidAmount: 0,
-          balanceAmount: taxCalc.grandTotal,
-          terms: terms || settings?.termsAndConditions,
-          notes: notesWithTemplate || settings?.invoiceNotes,
-          finalizedAt: status === 'FINALIZED' ? new Date() : null,
-          finalizedBy: status === 'FINALIZED' ? req.user?.name : null,
-        },
-      });
+      const invDate = invoiceDate ? new Date(invoiceDate) : new Date();
 
-      // Insert Containers
-      if (containers.length > 0) {
-        for (const c of containers) {
-          await prisma.invoiceContainer.create({
-            data: {
-              invoiceId: invoice.id,
-              containerId: c.containerId || null,
-              containerNumber: c.containerNumber,
-              size: c.size || '20 FT',
-              type: c.type || 'DRY',
-              cartingDate: c.cartingDate ? new Date(c.cartingDate) : null,
-              emptyGateInDate: c.emptyGateInDate ? new Date(c.emptyGateInDate) : null,
-              stuffingDate: c.stuffingDate ? new Date(c.stuffingDate) : null,
-              lddOutDate: c.lddOutDate ? new Date(c.lddOutDate) : null,
-              emptyGroundDays: Number(c.emptyGroundDays || c.emptyGroundRentDays || 0),
-              daysAfterCarting: Number(c.daysAfterCarting || 0),
-              loadedGroundDays: Number(c.loadedGroundDays || 0),
-              htCharges: Number(c.htCharges || 0),
-              logisticsCharges: Number(c.logisticsCharges || 0),
-              emptyTransportCharges: Number(c.emptyTransportCharges || 0),
-            },
+      // Execute atomic transaction for sequence generation, invoice creation, containers, items, and credit-note balance update
+      const invoice = await prisma.$transaction(async (tx) => {
+        let invoiceNumber = customInvoiceNumber ? String(customInvoiceNumber).trim() : '';
+
+        // Concurrency-safe atomic sequence generation
+        if (!invoiceNumber) {
+          invoiceNumber = await SequenceService.getNextInvoiceNumber(tx, billType, invDate, settings?.invoicePrefix);
+        } else {
+          // If custom invoice number supplied, ensure uniqueness
+          const existing = await tx.invoice.findUnique({
+            where: { invoiceNumber },
+            select: { id: true },
           });
+          if (existing) {
+            throw new Error(`Invoice number "${invoiceNumber}" is already in use.`);
+          }
         }
-      }
 
-      // Insert Line Items
-      if (items.length > 0) {
+        // Prepare container records
+        const containerRecords = containers.map((c: any) => ({
+          containerId: c.containerId || null,
+          containerNumber: c.containerNumber,
+          size: c.size || '20 FT',
+          type: c.type || 'DRY',
+          cartingDate: c.cartingDate ? new Date(c.cartingDate) : null,
+          emptyGateInDate: c.emptyGateInDate ? new Date(c.emptyGateInDate) : null,
+          stuffingDate: c.stuffingDate ? new Date(c.stuffingDate) : null,
+          lddOutDate: c.lddOutDate ? new Date(c.lddOutDate) : null,
+          emptyGroundDays: Number(c.emptyGroundDays || c.emptyGroundRentDays || 0),
+          daysAfterCarting: Number(c.daysAfterCarting || 0),
+          loadedGroundDays: Number(c.loadedGroundDays || 0),
+          htCharges: Number(c.htCharges || 0),
+          logisticsCharges: Number(c.logisticsCharges || 0),
+          emptyTransportCharges: Number(c.emptyTransportCharges || 0),
+        }));
+
+        // Prepare item records
         let sr = 1;
-        for (const item of items) {
+        const itemRecords = items.map((item: any) => {
           const lineQty = Number(item.quantity || 1);
           const lineRate = Number(item.rate || 0);
           const lineAmt = lineQty * lineRate;
@@ -312,49 +293,124 @@ export class InvoiceController {
           const igstAmt = taxCalc.isInterState ? Math.round(lineTaxable * (taxCalc.igstRate / 100) * 100) / 100 : 0;
           const totalAmt = lineTaxable + cgstAmt + sgstAmt + igstAmt;
 
-          await prisma.invoiceItem.create({
-            data: {
-              invoiceId: invoice.id,
-              containerId: item.containerId || null,
-              containerNumber: item.containerNumber || null,
-              containerSize: item.containerSize || null,
-              chargeMasterId: item.chargeMasterId || null,
-              srNo: sr++,
-              description: item.description,
-              hsnSacCode: item.hsnSacCode || '996719',
-              quantity: lineQty,
-              unit: item.unit || 'PER_CONTAINER',
-              rate: lineRate,
-              amount: lineAmt,
-              discount: lineDisc,
-              taxableValue: lineTaxable,
-              cgstRate: taxCalc.cgstRate,
-              cgstAmount: cgstAmt,
-              sgstRate: taxCalc.sgstRate,
-              sgstAmount: sgstAmt,
-              igstRate: taxCalc.igstRate,
-              igstAmount: igstAmt,
-              totalAmount: totalAmt,
-            },
-          });
-        }
-      }
+          return {
+            containerId: item.containerId || null,
+            containerNumber: item.containerNumber || null,
+            containerSize: item.containerSize || null,
+            chargeMasterId: item.chargeMasterId || null,
+            srNo: sr++,
+            description: item.description,
+            hsnSacCode: item.hsnSacCode || '996719',
+            quantity: lineQty,
+            unit: item.unit || 'PER_CONTAINER',
+            rate: lineRate,
+            amount: lineAmt,
+            discount: lineDisc,
+            taxableValue: lineTaxable,
+            cgstRate: taxCalc.cgstRate,
+            cgstAmount: cgstAmt,
+            sgstRate: taxCalc.sgstRate,
+            sgstAmount: sgstAmt,
+            igstRate: taxCalc.igstRate,
+            igstAmount: igstAmt,
+            totalAmount: totalAmt,
+          };
+        });
 
-      // If this is a credit note linked to an original invoice, adjust original invoice balance
-      if (originalInvoiceId) {
-        try {
-          const origInv = await prisma.invoice.findUnique({ where: { id: originalInvoiceId } });
+        // Atomic create
+        const newInv = await tx.invoice.create({
+          data: {
+            idempotencyKey,
+            invoiceNumber,
+            billType,
+            originalInvoiceId: originalInvoiceId || null,
+            originalInvoiceNumber: originalInvoiceNumber || null,
+            originalInvoiceDate: originalInvoiceDate ? new Date(originalInvoiceDate) : null,
+            reasonForCredit: reasonForCredit || null,
+            verificationToken: token,
+            vesselVoyage: vesselVoyage || null,
+            mblHbl: mblHbl || null,
+            portOfLoading: portOfLoading || null,
+            portOfDischarge: portOfDischarge || null,
+            invoiceDate: invDate,
+            dueDate: dueDate ? new Date(dueDate) : null,
+            partyId,
+            exporterId: exporterId || null,
+            jobId: jobId || null,
+            status,
+            currency: currency || 'INR',
+            billToName: party.legalName,
+            billToGstin: party.gstin,
+            billToAddress: party.billingAddress || party.registeredAddress || 'Maharashtra, India',
+            billToState: party.state,
+            billToStateCode: party.stateCode,
+            consigneeName,
+            consigneeAddress,
+            sbNumbers,
+            subtotal: taxCalc.subtotal,
+            discountAmount: taxCalc.discountAmount,
+            taxableAmount: taxCalc.taxableAmount,
+            isInterState: taxCalc.isInterState,
+            cgstRate: taxCalc.cgstRate,
+            cgstAmount: taxCalc.cgstAmount,
+            sgstRate: taxCalc.sgstRate,
+            sgstAmount: taxCalc.sgstAmount,
+            igstRate: taxCalc.igstRate,
+            igstAmount: taxCalc.igstAmount,
+            totalGst: taxCalc.totalGst,
+            roundOff: taxCalc.roundOff,
+            grandTotal: taxCalc.grandTotal,
+            amountInWords: taxCalc.amountInWords,
+            paidAmount: 0,
+            balanceAmount: taxCalc.grandTotal,
+            terms: terms || settings?.termsAndConditions,
+            notes: notesWithTemplate || settings?.invoiceNotes,
+            finalizedAt: status === 'FINALIZED' ? new Date() : null,
+            finalizedBy: status === 'FINALIZED' ? req.user?.name : null,
+            containers: containerRecords.length > 0 ? { create: containerRecords } : undefined,
+            items: itemRecords.length > 0 ? { create: itemRecords } : undefined,
+          },
+          include: {
+            party: { select: { id: true, legalName: true, gstin: true } },
+            job: { select: { id: true, jobNumber: true } },
+            containers: true,
+            items: { orderBy: { srNo: 'asc' } },
+          },
+        });
+
+        // Atomic credit note adjustment on original invoice
+        if (originalInvoiceId && billType === 'CREDIT_NOTE') {
+          const origInv = await tx.invoice.findUnique({ where: { id: originalInvoiceId } });
           if (origInv) {
             const adjustedBalance = Math.max(0, origInv.balanceAmount - taxCalc.grandTotal);
-            await prisma.invoice.update({
+            await tx.invoice.update({
               where: { id: originalInvoiceId },
               data: { balanceAmount: adjustedBalance },
             });
           }
-        } catch (origErr) {
-          console.warn('Original invoice balance adjustment warning:', origErr);
         }
-      }
+
+        return newInv;
+      }, {
+        maxWait: 10000,
+        timeout: 20000,
+      });
+
+      // Background document archiving with checksum in durable storage
+      setImmediate(async () => {
+        try {
+          const pdfBuffer = await PDFService.generateInvoicePDF(invoice.id);
+          await DocumentService.saveInvoiceDocument(
+            invoice.id,
+            invoice.invoiceNumber,
+            invoice.billType || 'STANDARD',
+            pdfBuffer,
+            { createdBy: req.user?.id, autoArchived: true }
+          );
+        } catch (pdfErr) {
+          console.warn(`[DocumentService] Async PDF generation for ${invoice.invoiceNumber}:`, pdfErr);
+        }
+      });
 
       const sym = invoice.currency === 'USD' ? '$' : '₹';
       const docLabel = invoice.billType === 'CREDIT_NOTE' ? 'credit note' : 'invoice';
@@ -368,6 +424,7 @@ export class InvoiceController {
 
       return res.status(201).json(invoice);
     } catch (err: any) {
+      console.error('Invoice create error:', err);
       return res.status(500).json({ error: err.message });
     }
   }
@@ -441,8 +498,9 @@ export class InvoiceController {
         updateData.currency = currency;
       }
 
+      let taxCalc: any = null;
       if (items && Array.isArray(items)) {
-        const taxCalc = await CalculationService.calculateInvoiceTaxes(
+        taxCalc = await CalculationService.calculateInvoiceTaxes(
           items,
           partyStateCode,
           discountAmount !== undefined ? discountAmount : existing.discountAmount,
@@ -474,78 +532,101 @@ export class InvoiceController {
           amountInWords: taxCalc.amountInWords,
           balanceAmount: Math.max(0, taxCalc.grandTotal - existing.paidAmount),
         };
-
-        // Replace line items
-        await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } });
-        let sr = 1;
-        for (const item of items) {
-          const lineQty = Number(item.quantity || 1);
-          const lineRate = Number(item.rate || 0);
-          const lineAmt = lineQty * lineRate;
-          const lineDisc = Number(item.discount || 0);
-          const lineTaxable = Math.max(0, lineAmt - lineDisc);
-
-          const cgstAmt = taxCalc.isInterState ? 0 : Math.round(lineTaxable * (taxCalc.cgstRate / 100) * 100) / 100;
-          const sgstAmt = taxCalc.isInterState ? 0 : Math.round(lineTaxable * (taxCalc.sgstRate / 100) * 100) / 100;
-          const igstAmt = taxCalc.isInterState ? Math.round(lineTaxable * (taxCalc.igstRate / 100) * 100) / 100 : 0;
-          const totalAmt = lineTaxable + cgstAmt + sgstAmt + igstAmt;
-
-          await prisma.invoiceItem.create({
-            data: {
-              invoiceId: id,
-              containerId: item.containerId || null,
-              chargeMasterId: item.chargeMasterId || null,
-              srNo: sr++,
-              description: item.description,
-              hsnSacCode: item.hsnSacCode || '996719',
-              quantity: lineQty,
-              unit: item.unit || 'PER_CONTAINER',
-              rate: lineRate,
-              amount: lineAmt,
-              discount: lineDisc,
-              taxableValue: lineTaxable,
-              cgstRate: taxCalc.cgstRate,
-              cgstAmount: cgstAmt,
-              sgstRate: taxCalc.sgstRate,
-              sgstAmount: sgstAmt,
-              igstRate: taxCalc.igstRate,
-              igstAmount: igstAmt,
-              totalAmount: totalAmt,
-            },
-          });
-        }
       }
 
-      // Update containers if provided
-      if (containers && Array.isArray(containers)) {
-        await prisma.invoiceContainer.deleteMany({ where: { invoiceId: id } });
-        for (const c of containers) {
-          await prisma.invoiceContainer.create({
-            data: {
-              invoiceId: id,
-              containerId: c.containerId || null,
-              containerNumber: c.containerNumber,
-              size: c.size || '20 FT',
-              type: c.type || 'DRY',
-              cartingDate: c.cartingDate ? new Date(c.cartingDate) : null,
-              emptyGateInDate: c.emptyGateInDate ? new Date(c.emptyGateInDate) : null,
-              stuffingDate: c.stuffingDate ? new Date(c.stuffingDate) : null,
-              lddOutDate: c.lddOutDate ? new Date(c.lddOutDate) : null,
-              emptyGroundDays: Number(c.emptyGroundDays || c.emptyGroundRentDays || 0),
-              daysAfterCarting: Number(c.daysAfterCarting || 0),
-              loadedGroundDays: Number(c.loadedGroundDays || 0),
-              htCharges: Number(c.htCharges || 0),
-              logisticsCharges: Number(c.logisticsCharges || 0),
-              emptyTransportCharges: Number(c.emptyTransportCharges || 0),
-            },
-          });
-        }
-      }
+      // Atomically update invoice header, replace items and containers in a single transaction
+      const updated = await prisma.$transaction(async (tx) => {
+        if (items && Array.isArray(items) && taxCalc) {
+          await tx.invoiceItem.deleteMany({ where: { invoiceId: id } });
+          let sr = 1;
+          for (const item of items) {
+            const lineQty = Number(item.quantity || 1);
+            const lineRate = Number(item.rate || 0);
+            const lineAmt = lineQty * lineRate;
+            const lineDisc = Number(item.discount || 0);
+            const lineTaxable = Math.max(0, lineAmt - lineDisc);
 
-      const updated = await prisma.invoice.update({
-        where: { id },
-        data: updateData,
-        include: { items: true, containers: true },
+            const cgstAmt = taxCalc.isInterState ? 0 : Math.round(lineTaxable * (taxCalc.cgstRate / 100) * 100) / 100;
+            const sgstAmt = taxCalc.isInterState ? 0 : Math.round(lineTaxable * (taxCalc.sgstRate / 100) * 100) / 100;
+            const igstAmt = taxCalc.isInterState ? Math.round(lineTaxable * (taxCalc.igstRate / 100) * 100) / 100 : 0;
+            const totalAmt = lineTaxable + cgstAmt + sgstAmt + igstAmt;
+
+            await tx.invoiceItem.create({
+              data: {
+                invoiceId: id,
+                containerId: item.containerId || null,
+                chargeMasterId: item.chargeMasterId || null,
+                srNo: sr++,
+                description: item.description,
+                hsnSacCode: item.hsnSacCode || '996719',
+                quantity: lineQty,
+                unit: item.unit || 'PER_CONTAINER',
+                rate: lineRate,
+                amount: lineAmt,
+                discount: lineDisc,
+                taxableValue: lineTaxable,
+                cgstRate: taxCalc.cgstRate,
+                cgstAmount: cgstAmt,
+                sgstRate: taxCalc.sgstRate,
+                sgstAmount: sgstAmt,
+                igstRate: taxCalc.igstRate,
+                igstAmount: igstAmt,
+                totalAmount: totalAmt,
+              },
+            });
+          }
+        }
+
+        // Update containers if provided
+        if (containers && Array.isArray(containers)) {
+          await tx.invoiceContainer.deleteMany({ where: { invoiceId: id } });
+          for (const c of containers) {
+            await tx.invoiceContainer.create({
+              data: {
+                invoiceId: id,
+                containerId: c.containerId || null,
+                containerNumber: c.containerNumber,
+                size: c.size || '20 FT',
+                type: c.type || 'DRY',
+                cartingDate: c.cartingDate ? new Date(c.cartingDate) : null,
+                emptyGateInDate: c.emptyGateInDate ? new Date(c.emptyGateInDate) : null,
+                stuffingDate: c.stuffingDate ? new Date(c.stuffingDate) : null,
+                lddOutDate: c.lddOutDate ? new Date(c.lddOutDate) : null,
+                emptyGroundDays: Number(c.emptyGroundDays || c.emptyGroundRentDays || 0),
+                daysAfterCarting: Number(c.daysAfterCarting || 0),
+                loadedGroundDays: Number(c.loadedGroundDays || 0),
+                htCharges: Number(c.htCharges || 0),
+                logisticsCharges: Number(c.logisticsCharges || 0),
+                emptyTransportCharges: Number(c.emptyTransportCharges || 0),
+              },
+            });
+          }
+        }
+
+        return tx.invoice.update({
+          where: { id },
+          data: updateData,
+          include: { items: true, containers: true },
+        });
+      }, {
+        maxWait: 10000,
+        timeout: 20000,
+      });
+
+      // Background document re-archiving with checksum in durable storage
+      setImmediate(async () => {
+        try {
+          const pdfBuffer = await PDFService.generateInvoicePDF(updated.id);
+          await DocumentService.saveInvoiceDocument(
+            updated.id,
+            updated.invoiceNumber,
+            updated.billType || 'STANDARD',
+            pdfBuffer,
+            { updatedBy: req.user?.id, autoUpdated: true }
+          );
+        } catch (pdfErr) {
+          console.warn(`[DocumentService] Async PDF update for ${updated.invoiceNumber}:`, pdfErr);
+        }
       });
 
       await logAudit({
@@ -631,13 +712,39 @@ export class InvoiceController {
   static async getPdf(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const { templateId } = req.query;
+      const { templateId, forceRegenerate } = req.query;
       const invoice = await prisma.invoice.findUnique({ where: { id } });
       if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
 
-      const pdfBuffer = await PDFService.generateInvoicePDF(id, undefined, {
-        templateId: templateId ? String(templateId) : undefined,
-      });
+      let pdfBuffer: Buffer | null = null;
+
+      // Check persistent document storage first if no template override and not forcing regeneration
+      if (!forceRegenerate && !templateId) {
+        const cached = await DocumentService.getInvoiceDocument(id);
+        if (cached && cached.buffer) {
+          pdfBuffer = cached.buffer;
+        }
+      }
+
+      // Generate if not cached or regeneration explicitly requested
+      if (!pdfBuffer) {
+        pdfBuffer = await PDFService.generateInvoicePDF(id, undefined, {
+          templateId: templateId ? String(templateId) : undefined,
+        });
+
+        // Store in durable document store with checksum
+        try {
+          await DocumentService.saveInvoiceDocument(
+            invoice.id,
+            invoice.invoiceNumber,
+            invoice.billType || 'STANDARD',
+            pdfBuffer,
+            { requestedBy: req.user?.id, templateId: templateId || 'default' }
+          );
+        } catch (saveErr) {
+          console.warn('[DocumentService] Caching PDF warning:', saveErr);
+        }
+      }
 
       const filename = `Invoice_${invoice.invoiceNumber.replace(/[\/\\]/g, '_')}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
@@ -737,6 +844,101 @@ export class InvoiceController {
         igstAmount: invoice.igstAmount,
         totalGst: invoice.totalGst,
         totalCreditValue: invoice.grandTotal,
+        grandTotal: invoice.grandTotal,
+        amountInWords: invoice.amountInWords,
+        currency: invoice.currency,
+        status: invoice.status,
+        company: {
+          name: settings?.companyName || 'MSK LOGISTIC SOLUTION',
+          gstin: settings?.gstin || '27AXWPK4562G1ZX',
+          city: settings?.city || 'Navi Mumbai',
+        },
+        companyName: settings?.companyName || 'MSK LOGISTIC SOLUTION',
+        companyGstin: settings?.gstin || '27AXWPK4562G1ZX',
+        companyPan: settings?.pan || 'AXWPK4562G',
+        companyAddress: settings?.address || 'JNPT Township Colony, Sector - 3, Building No. B/48, Office No. 3, Navi Mumbai - 400702',
+        companyPhone: settings?.phone || '+91 8104592823',
+        companyEmail: settings?.email || 'accounts@msklogisticsolution.com',
+        verificationTimestamp: new Date().toISOString(),
+        verifiedAt: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      return res.status(500).json({ verified: false, error: err.message });
+    }
+  }
+
+  static async verifyInvoice(req: Request, res: Response) {
+    try {
+      const { token } = req.params;
+      if (!token) {
+        return res.status(400).json({ verified: false, error: 'Verification token is required.' });
+      }
+
+      const invoice = await prisma.invoice.findFirst({
+        where: { verificationToken: token },
+        include: {
+          party: true,
+          items: {
+            orderBy: { srNo: 'asc' },
+          },
+          containers: true,
+        },
+      });
+
+      if (!invoice) {
+        return res.status(404).json({
+          verified: false,
+          error: 'Invoice record not found or verification token is invalid.',
+        });
+      }
+
+      const settings = await prisma.companySettings.findUnique({ where: { id: 'default' } });
+
+      return res.json({
+        verified: true,
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        billType: invoice.billType || 'HT_BILL',
+        invoiceDate: invoice.invoiceDate,
+        partyName: invoice.billToName,
+        partyGstin: invoice.billToGstin,
+        partyAddress: invoice.billToAddress,
+        partyState: invoice.billToState,
+        partyStateCode: invoice.billToStateCode,
+        vesselVoyage: invoice.vesselVoyage,
+        mblHbl: invoice.mblHbl,
+        portOfLoading: invoice.portOfLoading,
+        portOfDischarge: invoice.portOfDischarge,
+        containersCount: invoice.containers.length,
+        itemsCount: invoice.items.length,
+        containers: invoice.containers.map((c) => ({
+          containerNumber: c.containerNumber,
+          size: c.size,
+          type: c.type,
+          emptyGateInDate: c.emptyGateInDate,
+          stuffingDate: c.stuffingDate,
+          cartingDate: c.cartingDate,
+          lddOutDate: c.lddOutDate,
+          emptyGroundDays: c.emptyGroundDays,
+          daysAfterCarting: c.daysAfterCarting,
+          loadedGroundDays: c.loadedGroundDays,
+        })),
+        items: invoice.items.map((i) => ({
+          srNo: i.srNo,
+          description: i.description,
+          hsnSacCode: i.hsnSacCode,
+          rate: i.rate,
+          quantity: i.quantity,
+          taxableValue: i.taxableValue,
+        })),
+        taxableAmount: invoice.taxableAmount,
+        cgstRate: invoice.cgstRate,
+        cgstAmount: invoice.cgstAmount,
+        sgstRate: invoice.sgstRate,
+        sgstAmount: invoice.sgstAmount,
+        igstRate: invoice.igstRate,
+        igstAmount: invoice.igstAmount,
+        totalGst: invoice.totalGst,
         grandTotal: invoice.grandTotal,
         amountInWords: invoice.amountInWords,
         currency: invoice.currency,
