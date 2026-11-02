@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  html, body {
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     @apply bg-slate-50 text-slate-900 antialiased font-sans min-h-screen selection:bg-red-100 selection:text-red-900;
   }

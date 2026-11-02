@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -14,6 +14,7 @@ import {
   Landmark,
   ChevronRight,
   Home,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -21,14 +22,31 @@ interface SidebarProps {
   currentTab: string;
   setCurrentTab: (tab: string) => void;
   onOpenInvoiceWizard: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   currentTab,
   setCurrentTab,
+  isOpen = false,
+  onClose,
 }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+
+  // Support Escape key to close navigation drawer on mobile/tablet
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && onClose) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Exact 10 Navigation Items matching the reference design for Admin
   const adminNavItems = [
@@ -58,7 +76,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = isAdmin ? adminNavItems : accountManagerNavItems;
 
   return (
-    <aside className="w-[260px] sm:w-[270px] relative bg-[#071328] text-white border-r border-[#15233c] flex flex-col h-screen select-none shrink-0 transition-all duration-150 overflow-hidden">
+    <>
+      {/* Mobile/Tablet Backdrop Overlay with Outside Tap to Close */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs lg:hidden transition-opacity duration-300"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Drawer: Fixed & Slide-In on Mobile/Tablet (< 1024px), Static Expanded on Desktop (>= 1024px) */}
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-[270px] max-w-[85vw] bg-[#071328] text-white border-r border-[#15233c] flex flex-col h-screen select-none shrink-0 transition-transform duration-300 ease-in-out overflow-hidden shadow-2xl lg:shadow-none ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+        aria-label="Sidebar Navigation"
+      >
+        {/* Mobile Close Button (X) */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="lg:hidden absolute top-3.5 right-3.5 z-20 w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10"
+          aria-label="Close navigation menu"
+          title="Close Navigation"
+        >
+          <X className="w-5 h-5" />
+        </button>
       {/* Background Port Cranes & Shipping Vessel Silhouette at Bottom Left */}
       <svg
         className="absolute bottom-0 left-0 right-0 w-full h-56 pointer-events-none z-0 opacity-25"
@@ -136,8 +180,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => setCurrentTab(item.id)}
-              className={`w-full group flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[12.5px] transition-all duration-150 cursor-pointer ${
+              onClick={() => {
+                setCurrentTab(item.id);
+                if (onClose) onClose();
+              }}
+              className={`w-full group flex items-center justify-between px-3.5 py-3 min-h-[44px] rounded-xl text-[12.5px] transition-all duration-150 cursor-pointer ${
                 isActive
                   ? 'bg-[#e11d2e] text-white font-bold shadow-md shadow-red-950/40'
                   : 'text-slate-300 hover:text-white hover:bg-[#10203a] font-medium'
@@ -187,5 +234,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
     </aside>
+    </>
   );
 };

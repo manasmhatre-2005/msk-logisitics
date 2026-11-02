@@ -204,8 +204,8 @@ export const ContainersPage: React.FC = () => {
       </div>
 
       {/* Filter and Table */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-md w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
@@ -215,7 +215,7 @@ export const ContainersPage: React.FC = () => {
             className="w-full rounded-lg border border-slate-300 pl-9 pr-3 py-1.5 text-xs text-slate-900 uppercase font-mono"
           />
         </div>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-slate-500 shrink-0">
           Total Containers: <strong className="text-slate-900">{containers.length}</strong>
         </span>
       </div>

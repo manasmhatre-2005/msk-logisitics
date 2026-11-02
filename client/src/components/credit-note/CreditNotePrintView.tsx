@@ -526,24 +526,24 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex justify-center p-0 sm:p-4 print:p-0 print:bg-white print:static">
       <div className="bg-slate-900 border border-slate-700/80 rounded-none sm:rounded-2xl w-full max-w-5xl h-full sm:h-[94vh] flex flex-col shadow-2xl overflow-hidden print:border-none print:shadow-none print:h-auto print:w-full">
-        {/* Top Floating Control Bar - Sticky */}
-        <div className="bg-slate-900/95 border-b border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between no-print sticky top-0 z-10 backdrop-blur-md shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Official Credit Note (Rule 53)</span>
+        {/* Top Floating Control Bar - Sticky & Responsive */}
+        <div className="bg-slate-900/95 border-b border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2 no-print sticky top-0 z-10 backdrop-blur-md shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-[11px] sm:text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+              <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>Credit Note</span>
             </span>
-            <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+            <span className="text-[11px] sm:text-xs text-slate-400 font-mono truncate max-w-[150px] sm:max-w-none">
               Ref: {invoice.invoiceNumber}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {verifyToken && (
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700"
                 title="Copy Verification Link"
               >
                 {copiedUrl ? (
@@ -554,7 +554,8 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>Copy Verify URL</span>
+                    <span className="hidden sm:inline">Copy Verify URL</span>
+                    <span className="sm:hidden">URL</span>
                   </>
                 )}
               </button>
@@ -562,15 +563,16 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
 
             <button
               onClick={handleDownloadPdf}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-100 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700 shadow-xs"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-100 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700 shadow-xs"
             >
               <Download className="w-3.5 h-3.5 text-red-400" />
-              <span>Download PDF</span>
+              <span className="hidden sm:inline">Download PDF</span>
+              <span className="sm:hidden">PDF</span>
             </button>
 
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print A4</span>
@@ -578,7 +580,7 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
 
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-white hover:bg-slate-800 p-1.5 rounded-lg transition-colors ml-2"
+              className="text-slate-400 hover:text-white hover:bg-slate-800 p-1.5 rounded-lg transition-colors ml-1"
               title="Close (Esc)"
             >
               <X className="w-5 h-5" />
@@ -586,12 +588,12 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
           </div>
         </div>
 
-        {/* Scrollable Printable Document Container with Independent Vertical Scroll */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-200/70 print:p-0 print:bg-white print:overflow-visible">
-          {/* A4 Sheet with Exact Format Matching Reference Image */}
+        {/* Scrollable Printable Document Container with Independent Horizontal & Vertical Scroll */}
+        <div className="flex-1 overflow-auto p-2 sm:p-6 md:p-8 flex justify-start sm:justify-center bg-slate-200/70 print:p-0 print:bg-white print:overflow-visible">
+          {/* A4 Sheet with Exact Format Matching Reference (Preserves true A4 layout on all mobile viewports) */}
           <div
             ref={printContainerRef}
-            className="bg-white text-slate-900 shadow-xl border border-slate-300 w-full max-w-[794px] p-6 text-[11px] leading-tight print:shadow-none print:border-none print:p-2 print:max-w-none"
+            className="bg-white text-slate-900 shadow-xl border border-slate-300 w-[794px] min-w-[760px] p-6 text-[11px] leading-tight print:shadow-none print:border-none print:p-2 print:max-w-none print:w-full print:min-w-0"
             style={{ minHeight: '1080px' }}
           >
             {sheetInner}

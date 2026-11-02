@@ -420,7 +420,7 @@ export const PaymentsPage: React.FC<PaymentsPageProps> = ({ onViewInvoice }) => 
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto whitespace-nowrap pb-0.5">
         <button
           onClick={() => setActiveTab('outstanding')}
           className={`flex items-center gap-2 px-5 py-3 text-xs font-bold border-b-2 transition-all ${

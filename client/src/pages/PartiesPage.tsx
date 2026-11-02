@@ -166,8 +166,8 @@ export const PartiesPage: React.FC<PartiesPageProps> = ({
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="relative flex-1 max-w-md w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
@@ -177,7 +177,7 @@ export const PartiesPage: React.FC<PartiesPageProps> = ({
             className="w-full rounded-lg border border-slate-300 pl-9 pr-3 py-1.5 text-xs text-slate-900 focus:outline-blue-500"
           />
         </div>
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500 shrink-0">
           Showing <span className="font-bold text-slate-900">{parties.length}</span> Parties
         </div>
       </div>

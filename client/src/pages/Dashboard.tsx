@@ -665,29 +665,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
 
               {/* Bars Row */}
-              <div className="grid grid-cols-7 gap-2 pl-7 h-28 items-end relative z-10">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 pl-6 sm:pl-7 h-28 items-end relative z-10">
                 {teuTrendDays.map((item, idx) => {
                   const maxVal = 40;
                   const inHeight = Math.round((item.inYard / maxVal) * 100);
                   const outHeight = Math.round((item.outYard / maxVal) * 100);
 
                   return (
-                    <div key={idx} className="flex flex-col items-center justify-end h-full group">
-                      <div className="w-full flex items-end justify-center gap-1 h-24">
+                    <div key={idx} className="flex flex-col items-center justify-end h-full group min-w-0">
+                      <div className="w-full flex items-end justify-center gap-0.5 sm:gap-1 h-24">
                         {/* Red In-Yard Bar */}
                         <div
                           style={{ height: `${inHeight}%` }}
-                          className="w-2.5 sm:w-3 bg-[#f43f5e] hover:bg-rose-600 rounded-t-sm transition-all duration-300"
+                          className="w-2 sm:w-3 bg-[#f43f5e] hover:bg-rose-600 rounded-t-xs transition-all duration-300"
                           title={`In-Yard: ${item.inYard} TEU`}
                         />
                         {/* Blue Out-Yard Bar */}
                         <div
                           style={{ height: `${outHeight}%` }}
-                          className="w-2.5 sm:w-3 bg-[#3b82f6] hover:bg-blue-600 rounded-t-sm transition-all duration-300"
+                          className="w-2 sm:w-3 bg-[#3b82f6] hover:bg-blue-600 rounded-t-xs transition-all duration-300"
                           title={`Out-Yard: ${item.outYard} TEU`}
                         />
                       </div>
-                      <span className="text-[10px] text-slate-500 font-medium mt-1 truncate">
+                      <span className="text-[8.5px] sm:text-[10px] text-slate-500 font-medium mt-1 truncate block text-center w-full">
                         {item.date}
                       </span>
                     </div>

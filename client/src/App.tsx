@@ -73,7 +73,8 @@ const MainApp: React.FC = () => {
   const [printableEmptyContainer, setPrintableEmptyContainer] = useState<Invoice | null>(null);
   const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
 
-  // Modals
+  // Modals & Navigation
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isBillTypeModalOpen, setIsBillTypeModalOpen] = useState(false);
   const [selectedBillType, setSelectedBillType] = useState<BillType | null>(null);
@@ -332,7 +333,7 @@ const MainApp: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-[#F2F6FA] overflow-hidden font-sans">
-      {/* Light Professional Sidebar with Role Differentiation */}
+      {/* Light Professional Sidebar with Mobile Collapsible Drawer */}
       <Sidebar
         currentTab={currentTab}
         setCurrentTab={(tab) => {
@@ -341,6 +342,8 @@ const MainApp: React.FC = () => {
           setSelectedInvoiceId(null);
         }}
         onOpenInvoiceWizard={() => handleOpenCreateInvoice()}
+        isOpen={isMobileNavOpen}
+        onClose={() => setIsMobileNavOpen(false)}
       />
 
       {/* Main App Container */}
@@ -356,10 +359,11 @@ const MainApp: React.FC = () => {
           onOpenAddJobModal={() => setCurrentTab('jobs')}
           onOpenAddContainerModal={() => setCurrentTab('containers')}
           onSignOut={handleSignOut}
+          onToggleMobileNav={() => setIsMobileNavOpen((prev) => !prev)}
         />
 
         {/* Page Content Scroll Area */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-8">
           <Suspense fallback={<ViewLoadingFallback />}>
             {/* Dashboard: Dedicated view per verified role */}
           {currentTab === 'dashboard' && (
@@ -495,7 +499,7 @@ const MainApp: React.FC = () => {
 
       {/* Invoice Creation Wizard Modal */}
       {isInvoiceWizardOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs p-4 sm:p-8">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-xs p-2 sm:p-6 md:p-8">
           <div className="max-w-5xl mx-auto">
             <InvoiceWizard
               initialParty={prefilledPartyForWizard}
