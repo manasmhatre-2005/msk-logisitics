@@ -20,6 +20,7 @@ const router = Router();
 
 // Public Auth routes
 router.post('/auth/login', AuthController.login);
+router.post('/auth/logout', AuthController.logout);
 
 // GSTIN Lookup (Public Search & Verification)
 router.post('/gst/lookup', GSTController.lookup);

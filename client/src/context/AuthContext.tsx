@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
   switchDemoRole: (role: UserRole) => Promise<void>;
   hasRole: (roles: UserRole[]) => boolean;
 }
@@ -28,6 +28,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const handleUnauthorized = () => {
+      localStorage.removeItem('logibill_token');
+      sessionStorage.removeItem('logibill_token');
+      setUser(null);
+    };
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, []);
+
+  useEffect(() => {
     const initAuth = async () => {
       try {
         if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.search.includes('preview=dashboard')) {
@@ -42,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        const token = localStorage.getItem('logibill_token');
+        const token = localStorage.getItem('logibill_token') || sessionStorage.getItem('logibill_token');
         if (token) {
           const res = await api.getMe();
           setUser(res.user);
@@ -53,6 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         // Fall back to clean unauthenticated state on token expiration or invalidity
         localStorage.removeItem('logibill_token');
+        sessionStorage.removeItem('logibill_token');
         setUser(null);
       } finally {
         setLoading(false);
@@ -68,9 +79,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return res.user;
   };
 
-  const logout = () => {
-    localStorage.removeItem('logibill_token');
-    setUser(null);
+  const logout = async (): Promise<void> => {
+    try {
+      await api.logout();
+    } catch (err) {
+      console.warn('Backend logout notification skipped or unreachable, proceeding with client cleanup:', err);
+    } finally {
+      localStorage.removeItem('logibill_token');
+      sessionStorage.removeItem('logibill_token');
+      if (typeof window !== 'undefined' && window.location.search.includes('preview=')) {
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState(null, '', cleanUrl);
+      }
+      setUser(null);
+    }
   };
 
   const switchDemoRole = async (role: UserRole) => {

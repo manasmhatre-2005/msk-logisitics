@@ -18,7 +18,7 @@ import {
 const API_BASE = '/api';
 
 function getHeaders(): HeadersInit {
-  const token = localStorage.getItem('logibill_token');
+  const token = localStorage.getItem('logibill_token') || sessionStorage.getItem('logibill_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -40,6 +40,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   if (!res.ok) {
     if (res.status === 401 && !endpoint.includes('/auth/login')) {
       localStorage.removeItem('logibill_token');
+      sessionStorage.removeItem('logibill_token');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      }
     }
     let errMsg = `Request failed (${res.status})`;
     try {
@@ -60,6 +64,10 @@ export const api = {
     request<{ token: string; user: User }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
+    }),
+  logout: () =>
+    request<{ success: boolean; message: string }>('/auth/logout', {
+      method: 'POST',
     }),
   getMe: () => request<{ user: User }>('/auth/me'),
   getUsers: () => request<User[]>('/auth/users'),

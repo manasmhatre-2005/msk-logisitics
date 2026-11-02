@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
   Plus,
@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types/index';
@@ -22,6 +23,7 @@ interface HeaderProps {
   onOpenAddPartyModal: () => void;
   onOpenAddJobModal: () => void;
   onOpenAddContainerModal: () => void;
+  onSignOut?: () => Promise<void> | void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -30,10 +32,52 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAddPartyModal,
   onOpenAddJobModal,
   onOpenAddContainerModal,
+  onSignOut,
 }) => {
   const { user, switchDemoRole, logout } = useAuth();
   const [roleMenuOpen, setRoleMenuOpen] = React.useState(false);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const roleMenuRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (roleMenuRef.current && !roleMenuRef.current.contains(target)) {
+        setRoleMenuOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(target)) {
+        setNotificationsOpen(false);
+      }
+    };
+
+    if (roleMenuOpen || notificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [roleMenuOpen, notificationsOpen]);
+
+  const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      setRoleMenuOpen(false);
+      if (onSignOut) {
+        await onSignOut();
+      } else {
+        await logout();
+      }
+    } catch (err) {
+      console.error('Sign out error:', err);
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   const roles: { role: UserRole; title: string; color: string }[] = [
     { role: 'ADMIN', title: 'Admin (All Access)', color: 'text-red-700' },
@@ -100,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Notifications Control */}
-        <div className="relative">
+        <div className="relative" ref={notificationsRef}>
           <button
             onClick={() => setNotificationsOpen(!notificationsOpen)}
             className="p-2 rounded-xl bg-white hover:bg-[#F2F6FA] border border-[#D8E2ED] text-[#14263D] hover:text-[#F5222D] transition-colors relative shadow-2xs"
@@ -145,7 +189,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* User Account & Role Profile Menu */}
-        <div className="relative">
+        <div className="relative" ref={roleMenuRef}>
           <button
             onClick={() => setRoleMenuOpen(!roleMenuOpen)}
             className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors"
@@ -202,16 +246,16 @@ export const Header: React.FC<HeaderProps> = ({
 
               <div className="p-1">
                 <button
-                  onClick={() => {
-                    logout();
-                    setRoleMenuOpen(false);
-                    window.history.pushState(null, '', '/');
-                    window.dispatchEvent(new PopStateEvent('popstate'));
-                  }}
-                  className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 font-semibold transition-colors cursor-pointer"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                  className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg flex items-center gap-2 font-semibold transition-colors cursor-pointer"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Sign Out</span>
+                  {isSigningOut ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-600" />
+                  ) : (
+                    <LogOut className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isSigningOut ? 'Signing Out...' : 'Sign Out'}</span>
                 </button>
               </div>
             </div>

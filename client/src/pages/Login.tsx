@@ -11,14 +11,18 @@ import {
   Box,
   FileText,
   BarChart3,
+  CheckCircle2,
+  X,
 } from 'lucide-react';
 import { UserRole } from '../types/index';
 
 interface LoginProps {
   onSuccess?: (role: UserRole) => void;
+  logoutMessage?: string | null;
+  onClearLogoutMessage?: () => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
+export const Login: React.FC<LoginProps> = ({ onSuccess, logoutMessage, onClearLogoutMessage }) => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,6 +38,7 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
       return;
     }
 
+    if (onClearLogoutMessage) onClearLogoutMessage();
     setLoading(true);
     setError(null);
     try {
@@ -86,6 +91,26 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
             </p>
           </div>
 
+          {/* Sign Out / Status Notification */}
+          {logoutMessage && !error && (
+            <div className="mt-3 flex items-center justify-between gap-2 p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span className="font-semibold">{logoutMessage}</span>
+              </div>
+              {onClearLogoutMessage && (
+                <button
+                  type="button"
+                  onClick={onClearLogoutMessage}
+                  className="text-emerald-700 hover:text-emerald-900 p-0.5 rounded cursor-pointer"
+                  title="Dismiss notification"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Error Message */}
           {error && (
             <div className="mt-3 flex items-center gap-2 p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl animate-fadeIn">
@@ -109,7 +134,10 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
                   autoComplete="username"
                   placeholder="Enter your email or username"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    if (onClearLogoutMessage) onClearLogoutMessage();
+                    setEmail(e.target.value);
+                  }}
                   className="w-full h-11 sm:h-11.5 pl-10 pr-3.5 text-xs sm:text-sm text-slate-800 placeholder-slate-400 bg-transparent rounded-xl outline-none"
                 />
               </div>
@@ -128,7 +156,10 @@ export const Login: React.FC<LoginProps> = ({ onSuccess }) => {
                   autoComplete="current-password"
                   placeholder="Enter your password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    if (onClearLogoutMessage) onClearLogoutMessage();
+                    setPassword(e.target.value);
+                  }}
                   className="w-full h-11 sm:h-11.5 pl-10 pr-10 text-xs sm:text-sm text-slate-800 placeholder-slate-400 bg-transparent rounded-xl outline-none"
                 />
                 <button

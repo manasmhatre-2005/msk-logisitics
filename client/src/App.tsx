@@ -50,7 +50,7 @@ const MainApp: React.FC = () => {
   const verifyHtToken = verifyHtMatch ? verifyHtMatch[1] : (verifyGenericMatch ? verifyGenericMatch[1] : searchParams.get('verify_ht'));
   const verifyEmptyToken = verifyEmptyMatch ? verifyEmptyMatch[1] : searchParams.get('verify_empty');
 
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null);
@@ -59,6 +59,7 @@ const MainApp: React.FC = () => {
   const [printableCreditNote, setPrintableCreditNote] = useState<Invoice | null>(null);
   const [printableHtInvoice, setPrintableHtInvoice] = useState<Invoice | null>(null);
   const [printableEmptyContainer, setPrintableEmptyContainer] = useState<Invoice | null>(null);
+  const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
 
   // Modals
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -86,6 +87,31 @@ const MainApp: React.FC = () => {
     setCurrentPath(to);
   };
 
+  // Robust session teardown and state isolation on sign out
+  const handleSignOut = async () => {
+    try {
+      await logout();
+    } finally {
+      setCurrentTab('dashboard');
+      setSelectedPartyId(null);
+      setSelectedInvoiceId(null);
+      setPrintableInvoice(null);
+      setPrintableCreditNote(null);
+      setPrintableHtInvoice(null);
+      setPrintableEmptyContainer(null);
+      setIsSearchModalOpen(false);
+      setIsBillTypeModalOpen(false);
+      setSelectedBillType(null);
+      setIsInvoiceWizardOpen(false);
+      setIsCreditNoteFormOpen(false);
+      setIsHtBillFormOpen(false);
+      setIsEmptyContainerFormOpen(false);
+      setPrefilledPartyForWizard(null);
+      setLogoutNotice('Signed out successfully.');
+      navigate('/login');
+    }
+  };
+
   // Role-based URL route synchronization on authenticated session load
   useEffect(() => {
     if (!loading && user) {
@@ -107,6 +133,16 @@ const MainApp: React.FC = () => {
         ) {
           navigate('/account/dashboard');
         }
+      }
+    } else if (!loading && !user) {
+      if (
+        currentPath.startsWith('/admin') ||
+        currentPath.startsWith('/account') ||
+        currentPath === '/dashboard' ||
+        currentPath === '/invoices' ||
+        currentPath === '/parties'
+      ) {
+        navigate('/login');
       }
     }
   }, [user, loading, currentPath]);
@@ -202,9 +238,12 @@ const MainApp: React.FC = () => {
     return (
       <Login
         onSuccess={(role) => {
+          setLogoutNotice(null);
           const target = role === 'ADMIN' ? '/admin/dashboard' : '/account/dashboard';
           navigate(target);
         }}
+        logoutMessage={logoutNotice}
+        onClearLogoutMessage={() => setLogoutNotice(null)}
       />
     );
   }
@@ -271,6 +310,7 @@ const MainApp: React.FC = () => {
           }}
           onOpenAddJobModal={() => setCurrentTab('jobs')}
           onOpenAddContainerModal={() => setCurrentTab('containers')}
+          onSignOut={handleSignOut}
         />
 
         {/* Page Content Scroll Area */}

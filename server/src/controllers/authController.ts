@@ -77,6 +77,58 @@ export class AuthController {
     }
   }
 
+  static async logout(req: AuthRequest, res: Response) {
+    try {
+      let logoutUserId: string | undefined = req.user?.id;
+      let logoutUserName: string | undefined = req.user?.name;
+      let logoutEmail: string | undefined = req.user?.email;
+
+      // If user object not attached via middleware, attempt graceful decode from Authorization header
+      if (!logoutUserId) {
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+          const rawToken = authHeader.split(' ')[1];
+          try {
+            const decoded = jwt.decode(rawToken) as { id?: string; email?: string; name?: string; role?: string } | null;
+            if (decoded?.id) {
+              logoutUserId = decoded.id;
+              logoutUserName = decoded.name;
+              logoutEmail = decoded.email;
+            }
+          } catch {
+            // Non-blocking decode failure
+          }
+        }
+      }
+
+      // Audit the logout event if user identity is known
+      if (logoutUserId) {
+        await logAudit({
+          action: 'UPDATE',
+          entityType: 'SETTINGS',
+          entityId: logoutUserId,
+          details: `User logout: ${logoutEmail || logoutUserId} signed out`,
+          userId: logoutUserId,
+          userName: logoutUserName || 'User',
+          req,
+        });
+      }
+
+      // Clear standard authentication cookies if set by browser/reverse proxy
+      res.clearCookie('token', { path: '/' });
+      res.clearCookie('logibill_token', { path: '/' });
+
+      return res.json({
+        success: true,
+        message: 'Signed out successfully',
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        error: config.isProduction ? 'Internal server error' : err.message,
+      });
+    }
+  }
+
   static async getMe(req: AuthRequest, res: Response) {
     try {
       if (!req.user) {
