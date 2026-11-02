@@ -7,6 +7,7 @@ import { EmailSendModal } from '../email/EmailSendModal';
 import { CreditNotePrintView } from '../credit-note/CreditNotePrintView';
 import { HtBillPrintView } from '../ht-bill/HtBillPrintView';
 import { EmptyContainerPrintView } from '../empty-container/EmptyContainerPrintView';
+import { InvoiceWatermark } from '../common/InvoiceWatermark';
 
 interface InvoicePrintViewProps {
   invoice: Invoice;
@@ -139,7 +140,9 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
         {/* Scrollable Printable Document Container with Independent Vertical Scroll */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center bg-slate-200/70 print:p-0 print:bg-white print:overflow-visible">
           {/* A4 Sheet Following Exact Client Sample Invoice (Image 3) */}
-          <div className="bg-white border border-slate-400 shadow-xl print:shadow-none print:border-none p-6 sm:p-8 text-slate-900 text-[11px] leading-tight font-sans w-full max-w-[820px] my-0 space-y-0" style={{ minHeight: '1080px' }}>
+          <div className="bg-white border border-slate-400 shadow-xl print:shadow-none print:border-none p-6 sm:p-8 text-slate-900 text-[11px] leading-tight font-sans w-full max-w-[820px] my-0 space-y-0 relative overflow-hidden" style={{ minHeight: '1080px' }}>
+            {/* Subtle Centered Official MSK Logo Watermark (Behind all content) */}
+            <InvoiceWatermark />
         {/* 1. Top Header Box: ISO Logo, Company Heading, MSK Logo */}
         <div className="border border-slate-800 grid grid-cols-12 items-center p-2 gap-2">
           {/* ISO 9001:2015 Logo Box (Left) - Framed as in Image 3 */}

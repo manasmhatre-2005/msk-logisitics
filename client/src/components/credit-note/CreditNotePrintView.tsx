@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Invoice } from '../../types/index';
 import { formatCurrency, numberToWords } from '../../utils/currency';
+import { InvoiceWatermark } from '../common/InvoiceWatermark';
 
 interface CreditNotePrintViewProps {
   invoice: Invoice;
@@ -130,7 +131,10 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
         ];
 
   const sheetInner = (
-    <>
+    <div className="relative overflow-hidden w-full h-full space-y-0">
+      {/* Subtle Centered Official MSK Logo Watermark (Behind all content) */}
+      <InvoiceWatermark />
+      <div className="relative z-10 space-y-0">
       {/* 1. Header Box with QR, Company Details, Logos */}
       <div className="border border-slate-800 grid grid-cols-12 divide-x divide-slate-300">
               {/* QR Code (Col 1-2: Width 16%) */}
@@ -504,7 +508,8 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
                 Digitally generated and verified document. Original certificate token: <strong className="font-mono text-slate-600">{verifyToken || 'N/A'}</strong>
               </span>
             </div>
-    </>
+      </div>
+    </div>
   );
 
   if (displayMode === 'inline') {

@@ -13,6 +13,7 @@ import { Invoice } from '../../types/index';
 import { formatCurrency, numberToIndianWords } from '../../utils/currency';
 import { EmailSendModal } from '../email/EmailSendModal';
 import { api } from '../../services/api';
+import { InvoiceWatermark } from '../common/InvoiceWatermark';
 
 interface EmptyContainerPrintViewProps {
   invoice: Invoice;
@@ -166,7 +167,10 @@ export const EmptyContainerPrintView: React.FC<EmptyContainerPrintViewProps> = (
   const placeOfSupply = invoice.billToState ? `${invoice.billToState} (Code ${invoice.billToStateCode || '27'})` : 'Maharashtra (Code 27)';
 
   const sheetInner = (
-    <>
+    <div className="relative overflow-hidden w-full h-full space-y-0">
+      {/* Subtle Centered Official MSK Logo Watermark (Behind all content) */}
+      <InvoiceWatermark />
+      <div className="relative z-10 space-y-0">
       {/* ========================================== */}
       {/* 1. TOP HEADER (QR CODE, MSK BRANDING & TAX INVOICE) */}
       {/* ========================================== */}
@@ -544,7 +548,8 @@ export const EmptyContainerPrintView: React.FC<EmptyContainerPrintViewProps> = (
         <span>This is a computer generated Empty Container Tax Invoice under Rule 46 of CGST Rules, 2017.</span>
         <span>Page 1 of 1</span>
       </div>
-    </>
+      </div>
+    </div>
   );
 
   if (displayMode === 'inline') {

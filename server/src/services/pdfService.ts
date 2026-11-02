@@ -41,6 +41,41 @@ function formatCurrency(n: number | null | undefined, currency = 'INR'): string 
   return n.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/**
+ * Draw official subtle MSK Logistic Solution watermark in the exact center of every invoice page.
+ * Keeps opacity at 0.07 (within 5-10% corporate standard) and preserves the original 2:1 logo aspect ratio.
+ */
+function drawPageWatermark(doc: any): void {
+  try {
+    const watermarkPath =
+      getAssetPath('msk-invoice-watermark.png') ||
+      getAssetPath('msk-logo.png');
+
+    if (!watermarkPath) return;
+
+    const pageWidth = doc.page.width || 595.28;
+    const pageHeight = doc.page.height || 841.89;
+
+    // Logo aspect ratio is 2:1 (1024 x 512).
+    // Width 370 pt fits centered with ample margins on A4
+    const wmWidth = Math.min(370, pageWidth * 0.65);
+    const wmHeight = wmWidth / 2;
+
+    const x = (pageWidth - wmWidth) / 2;
+    const y = (pageHeight - wmHeight) / 2;
+
+    doc.save();
+    doc.opacity(0.07); // 7% opacity: subtle, non-intrusive, corporate watermark
+    doc.image(watermarkPath, x, y, {
+      width: wmWidth,
+      height: wmHeight,
+    });
+    doc.restore();
+  } catch (err) {
+    console.error('Failed to draw invoice watermark on PDF page:', err);
+  }
+}
+
 export type BillFormatId = 'format-1' | 'format-2' | 'format-3' | 'format-4' | 'format-5';
 
 export interface PDFGenerationOptions {
@@ -117,6 +152,10 @@ export class PDFService {
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', (err) => reject(err));
+
+      // Draw subtle MSK watermark behind content on initial page and any subsequent pages
+      doc.on('pageAdded', () => drawPageWatermark(doc));
+      drawPageWatermark(doc);
 
       const leftX = 24;
       const contentWidth = 547;
@@ -691,6 +730,10 @@ export class PDFService {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', (err) => reject(err));
 
+      // Draw subtle MSK watermark behind content on initial page and any subsequent pages
+      doc.on('pageAdded', () => drawPageWatermark(doc));
+      drawPageWatermark(doc);
+
       const leftX = 24;
       const contentWidth = 547;
       const rightX = leftX + contentWidth; // 571
@@ -1179,6 +1222,10 @@ export class PDFService {
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', (err) => reject(err));
+
+      // Draw subtle MSK watermark behind content on initial page and any subsequent pages
+      doc.on('pageAdded', () => drawPageWatermark(doc));
+      drawPageWatermark(doc);
 
       const leftX = 22;
       const contentWidth = 551;
@@ -1718,6 +1765,10 @@ export class PDFService {
       doc.on('data', (chunk) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', (err) => reject(err));
+
+      // Draw subtle MSK watermark behind content on initial page and any subsequent pages
+      doc.on('pageAdded', () => drawPageWatermark(doc));
+      drawPageWatermark(doc);
 
       const leftX = 22;
       const contentWidth = 551;
