@@ -24,9 +24,14 @@ app.get('*', (req, res, next) => {
   });
 });
 
-app.listen(config.port, '0.0.0.0', async () => {
-  await ensureDefaultAccounts();
-  console.log(`🚀 LogiBill ERP Server running on http://localhost:${config.port}`);
-  console.log(`📡 GST Integration: ${config.gst.isMock ? 'MOCK SANDBOX' : 'LIVE GSP'}`);
-  console.log(`💬 WhatsApp Integration: ${config.whatsapp.isMock ? 'MOCK SANDBOX' : 'LIVE CLOUD API'}`);
-});
+// Always export default app for serverless / Vercel deployment
+export default app;
+
+if (!process.env.VERCEL) {
+  app.listen(config.port, '0.0.0.0', async () => {
+    await ensureDefaultAccounts();
+    console.log(`🚀 LogiBill ERP Server running on http://localhost:${config.port}`);
+    console.log(`📡 GST Integration: ${config.gst.isMock ? 'MOCK SANDBOX' : 'LIVE GSP'}`);
+    console.log(`💬 WhatsApp Integration: ${config.whatsapp.isMock ? 'MOCK SANDBOX' : 'LIVE CLOUD API'}`);
+  });
+}
