@@ -1,4 +1,40 @@
-export type UserRole = 'ADMIN' | 'ACCOUNT_MANAGER' | 'BILLING' | 'OPERATIONS' | 'ACCOUNTANT' | 'VIEWER';
+export type UserRole = 'ADMIN' | 'ACCOUNT_MANAGER' | 'DATA_ENTRY' | 'BILLING' | 'OPERATIONS' | 'ACCOUNTANT' | 'VIEWER';
+
+export interface DataEntryRecord {
+  id: string;
+  entryNumber: string;
+  operationType: 'CARTING' | 'STUFFING' | 'CARTING_AND_STUFFING';
+  operationDate: string;
+  containerType: string;
+  containerSize: '20 FT' | '40 FT';
+  containerNumber: string;
+  sealNumber: string;
+  movementType: 'IN' | 'OUT';
+  shippingLine: string;
+  exporterName: string;
+  exporterId?: string | null;
+  remarks?: string | null;
+  status: string;
+  createdById: string;
+  createdByName: string;
+  updatedById?: string | null;
+  updatedByName?: string | null;
+  emailSentCount: number;
+  lastEmailSentAt?: string | null;
+  lastEmailRecipient?: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DataEntryReferenceData {
+  containerSizes: string[];
+  containerTypes: string[];
+  movementTypes: string[];
+  operationTypes: string[];
+  shippingLines: string[];
+  exporters: { id: string; name: string }[];
+}
 
 export interface User {
   id: string;

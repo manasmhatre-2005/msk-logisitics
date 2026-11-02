@@ -15,6 +15,7 @@ import { ChatController } from '../controllers/chatController.js';
 import { SettingsController } from '../controllers/settingsController.js';
 import { SearchController } from '../controllers/searchController.js';
 import { AuditController } from '../controllers/auditController.js';
+import { DataEntryController } from '../controllers/dataEntryController.js';
 
 const router = Router();
 
@@ -48,79 +49,89 @@ router.get('/auth/me', AuthController.getMe);
 router.get('/auth/users', requireRole(['ADMIN']), AuthController.listUsers);
 router.post('/auth/change-password', AuthController.changePassword);
 
-// Parties
-router.get('/parties', PartyController.getAll);
-router.get('/parties/:id', PartyController.getById);
+// Dedicated Operational Data Entry Module (Data Entry Operators & Admin Only)
+router.get('/data-entry/reference-data', requireRole(['ADMIN', 'DATA_ENTRY']), DataEntryController.getReferenceData);
+router.get('/data-entry/export/csv', requireRole(['ADMIN', 'DATA_ENTRY']), DataEntryController.exportCsv);
+router.post('/data-entry', requireRole(['ADMIN', 'DATA_ENTRY']), DataEntryController.create);
+router.get('/data-entry', requireRole(['ADMIN', 'DATA_ENTRY']), DataEntryController.getAll);
+router.get('/data-entry/:id', requireRole(['ADMIN', 'DATA_ENTRY']), DataEntryController.getById);
+router.put('/data-entry/:id', requireRole(['ADMIN', 'DATA_ENTRY']), DataEntryController.update);
+router.delete('/data-entry/:id', requireRole(['ADMIN', 'DATA_ENTRY']), DataEntryController.delete);
+router.post('/data-entry/:id/email', requireRole(['ADMIN', 'DATA_ENTRY']), DataEntryController.sendEmail);
+
+// Parties (Strictly restricted to Admin and Account/Billing)
+router.get('/parties', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), PartyController.getAll);
+router.get('/parties/:id', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), PartyController.getById);
 router.post('/parties', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), PartyController.create);
 router.put('/parties/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), PartyController.update);
 router.delete('/parties/:id', requireRole(['ADMIN']), PartyController.delete);
 
 // Exporters
-router.get('/exporters', ExporterController.getAll);
+router.get('/exporters', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), ExporterController.getAll);
 router.post('/exporters', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), ExporterController.create);
 router.put('/exporters/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), ExporterController.update);
 router.delete('/exporters/:id', requireRole(['ADMIN']), ExporterController.delete);
 
 // Jobs & Shipments
-router.get('/jobs', JobController.getAll);
-router.get('/jobs/:id', JobController.getById);
+router.get('/jobs', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.getAll);
+router.get('/jobs/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.getById);
 router.post('/jobs', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.create);
 router.put('/jobs/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.update);
 router.delete('/jobs/:id', requireRole(['ADMIN']), JobController.delete);
 
 // Containers
-router.get('/containers', ContainerController.getAll);
-router.get('/containers/:id', ContainerController.getById);
+router.get('/containers', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ContainerController.getAll);
+router.get('/containers/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ContainerController.getById);
 router.post('/containers', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ContainerController.create);
 router.put('/containers/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ContainerController.update);
 router.delete('/containers/:id', requireRole(['ADMIN']), ContainerController.delete);
 router.post('/containers/calculate-dates', ContainerController.calculateDates);
 
 // Charges & Rates
-router.get('/charges', ChargeController.getAll);
+router.get('/charges', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ChargeController.getAll);
 router.post('/charges', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ChargeController.create);
 router.put('/charges/:id', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ChargeController.update);
 router.delete('/charges/:id', requireRole(['ADMIN']), ChargeController.delete);
 
-// Invoices
-router.get('/invoices', InvoiceController.getAll);
-router.get('/invoices/next-number', InvoiceController.getNextInvoiceNumber);
-router.get('/invoices/:id', InvoiceController.getById);
-router.post('/invoices/calculate', InvoiceController.calculate);
+// Invoices (Strictly restricted from Data Entry Operators)
+router.get('/invoices', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.getAll);
+router.get('/invoices/next-number', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.getNextInvoiceNumber);
+router.get('/invoices/:id', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.getById);
+router.post('/invoices/calculate', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.calculate);
 router.post('/invoices', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.create);
 router.put('/invoices/:id', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.update);
 router.post('/invoices/:id/finalize', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.finalize);
 router.post('/invoices/:id/cancel', requireRole(['ADMIN']), InvoiceController.cancel);
-router.get('/invoices/:id/pdf', InvoiceController.getPdf);
+router.get('/invoices/:id/pdf', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.getPdf);
 router.post('/invoices/:id/email', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), InvoiceController.sendEmail);
 
-// Payments
-router.get('/payments/outstanding', PaymentController.getPartyOutstanding);
-router.get('/payments', PaymentController.getAll);
+// Payments (Strictly restricted from Data Entry Operators)
+router.get('/payments/outstanding', requireRole(['ADMIN', 'ACCOUNTANT', 'ACCOUNT_MANAGER', 'BILLING']), PaymentController.getPartyOutstanding);
+router.get('/payments', requireRole(['ADMIN', 'ACCOUNTANT', 'ACCOUNT_MANAGER', 'BILLING']), PaymentController.getAll);
 router.post('/payments', requireRole(['ADMIN', 'ACCOUNTANT', 'ACCOUNT_MANAGER', 'BILLING']), PaymentController.record);
 
-// Reports & Dashboard
-router.get('/reports/dashboard', ReportController.getDashboardStats);
-router.get('/reports/party-billing', ReportController.getPartyBillingReport);
-router.get('/reports/gst', ReportController.getGstReport);
+// Reports & Dashboard (Strictly restricted from Data Entry Operators)
+router.get('/reports/dashboard', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ReportController.getDashboardStats);
+router.get('/reports/party-billing', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ReportController.getPartyBillingReport);
+router.get('/reports/gst', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ReportController.getGstReport);
 
 // WhatsApp Integration
 router.post('/whatsapp/send', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), WhatsAppController.sendMessage);
-router.get('/whatsapp/messages', WhatsAppController.listMessages);
-router.get('/whatsapp/templates', WhatsAppController.listTemplates);
-router.get('/whatsapp/test-connection', WhatsAppController.testConnection);
+router.get('/whatsapp/messages', requireRole(['ADMIN', 'BILLING']), WhatsAppController.listMessages);
+router.get('/whatsapp/templates', requireRole(['ADMIN', 'BILLING']), WhatsAppController.listTemplates);
+router.get('/whatsapp/test-connection', requireRole(['ADMIN']), WhatsAppController.testConnection);
 
 // AI Chatbot
-router.post('/chat', ChatController.message);
+router.post('/chat', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), ChatController.message);
 
-// Company & Billing Settings
-router.get('/settings', SettingsController.getSettings);
+// Company & Billing Settings (Admin Only for Updates)
+router.get('/settings', requireRole(['ADMIN', 'ACCOUNT_MANAGER']), SettingsController.getSettings);
 router.put('/settings', requireRole(['ADMIN']), SettingsController.updateSettings);
 
-// Global Search
-router.get('/search', SearchController.globalSearch);
+// Global Search (Admin & Account Manager)
+router.get('/search', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), SearchController.globalSearch);
 
-// Audit Logs
+// Audit Logs (Admin Only)
 router.get('/audit', requireRole(['ADMIN', 'VIEWER']), AuditController.list);
 
 export default router;

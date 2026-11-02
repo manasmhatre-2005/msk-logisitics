@@ -42,6 +42,38 @@ export async function ensureDefaultAccounts(): Promise<void> {
       });
       console.log('🔒 Provisioned initial Account Manager account: account@login');
     }
+
+    // 3. Data Entry Operator account: operator@login / Operator@123
+    const existingOperator = await prisma.user.findUnique({
+      where: { email: 'operator@login' },
+    });
+
+    if (!existingOperator) {
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash('Operator@123', salt);
+      await prisma.user.create({
+        data: {
+          email: 'operator@login',
+          passwordHash,
+          name: 'MSK Data Entry Operator',
+          role: 'DATA_ENTRY',
+          active: true,
+        },
+      });
+      console.log('🔒 Provisioned initial Data Entry Operator account: operator@login');
+    } else {
+      // Ensure active and role is DATA_ENTRY
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash('Operator@123', salt);
+      await prisma.user.update({
+        where: { email: 'operator@login' },
+        data: {
+          role: 'DATA_ENTRY',
+          active: true,
+          passwordHash,
+        },
+      });
+    }
   } catch (err) {
     console.warn('Account provisioning skipped or already executed:', (err as Error).message);
   }

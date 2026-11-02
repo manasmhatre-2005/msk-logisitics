@@ -13,6 +13,8 @@ import {
   CompanySettings,
   GSTVerificationResult,
   PartyOutstandingSummary,
+  DataEntryRecord,
+  DataEntryReferenceData,
 } from '../types/index';
 
 const API_BASE = '/api';
@@ -309,4 +311,36 @@ export const api = {
     if (entityId) params.append('entityId', entityId);
     return request<AuditLog[]>(`/audit?${params.toString()}`);
   },
+
+  // Operational Data Entry Module
+  getDataEntryReferenceData: () => request<DataEntryReferenceData>('/data-entry/reference-data'),
+  createDataEntry: (data: any) =>
+    request<{ success: boolean; message: string; record: DataEntryRecord }>('/data-entry', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getDataEntries: (params: Record<string, string | number> = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') qs.append(k, String(v));
+    });
+    return request<{ records: DataEntryRecord[]; total: number; page: number; limit: number; totalPages: number }>(
+      `/data-entry?${qs.toString()}`
+    );
+  },
+  getDataEntryById: (id: string) => request<DataEntryRecord>(`/data-entry/${id}`),
+  updateDataEntry: (id: string, data: any) =>
+    request<{ success: boolean; message: string; record: DataEntryRecord }>(`/data-entry/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteDataEntry: (id: string) =>
+    request<{ success: boolean; message: string }>(`/data-entry/${id}`, {
+      method: 'DELETE',
+    }),
+  sendDataEntryEmail: (id: string, data: { recipientEmail: string; customNote?: string }) =>
+    request<{ success: boolean; message: string; deliveryDetails: any }>(`/data-entry/${id}/email`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };

@@ -147,6 +147,7 @@ model Exporter {
   jobs          Job[]
   containers    Container[]
   invoices      Invoice[]
+  dataEntryRecords DataEntryRecord[]
 }
 
 model Job {
@@ -465,4 +466,40 @@ model Document {
 
   @@index([entityType, entityId])
   @@index([documentType])
+}
+
+model DataEntryRecord {
+  id                  String    @id @default(uuid())
+  entryNumber         String    @unique // e.g. "ENT-2026-0001"
+  operationType       String    @default("STUFFING") // CARTING, STUFFING, CARTING_AND_STUFFING
+  operationDate       DateTime  @default(now())
+  containerType       String    @default("DRY") // DRY, REEFER, OPEN_TOP, FLAT_RACK, TANK
+  containerSize       String    @default("20 FT") // 20 FT, 40 FT
+  containerNumber     String
+  sealNumber          String    // SED / Seal No.
+  movementType        String    @default("IN") // IN, OUT
+  shippingLine        String    // e.g. MAERSK, MSC, CMA CGM, HAPAG-LLOYD, etc.
+  exporterName        String
+  exporterId          String?
+  exporter            Exporter? @relation(fields: [exporterId], references: [id])
+  remarks             String?
+  status              String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  createdById         String
+  createdByName       String
+  updatedById         String?
+  updatedByName       String?
+  emailSentCount      Int       @default(0)
+  lastEmailSentAt     DateTime?
+  lastEmailRecipient  String?
+  version             Int       @default(1) // Optimistic concurrency check
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([containerNumber])
+  @@index([createdById])
+  @@index([operationDate])
+  @@index([movementType])
+  @@index([shippingLine])
+  @@index([exporterName])
+  @@index([status])
 }

@@ -13,7 +13,7 @@ export async function logAudit({
   userName,
 }: {
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'OVERRIDE' | 'FINALIZE' | 'SEND_WHATSAPP' | 'SEND_EMAIL' | 'PAYMENT_RECORDED' | 'CANCEL';
-  entityType: 'PARTY' | 'INVOICE' | 'CONTAINER' | 'JOB' | 'CHARGE' | 'PAYMENT' | 'SETTINGS' | 'EXPORTER';
+  entityType: 'PARTY' | 'INVOICE' | 'CONTAINER' | 'JOB' | 'CHARGE' | 'PAYMENT' | 'SETTINGS' | 'EXPORTER' | 'DATA_ENTRY_RECORD';
   entityId: string;
   details: string;
   oldValues?: any;

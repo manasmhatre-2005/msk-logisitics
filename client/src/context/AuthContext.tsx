@@ -17,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const DEV_DEMO_CREDENTIALS: Record<UserRole, { email: string; pass: string }> = {
   ADMIN: { email: 'admin@login', pass: 'admin@123' },
   ACCOUNT_MANAGER: { email: 'account@login', pass: 'Account@123' },
+  DATA_ENTRY: { email: 'operator@login', pass: 'Operator@123' },
   BILLING: { email: 'billing@logibill.com', pass: 'billing123' },
   OPERATIONS: { email: 'ops@logibill.com', pass: 'ops123' },
   ACCOUNTANT: { email: 'accountant@logibill.com', pass: 'accountant123' },

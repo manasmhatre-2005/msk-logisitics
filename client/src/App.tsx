@@ -27,6 +27,7 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage').then((m) => ({ defa
 const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default: m.UsersPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
+const DataEntryModule = lazy(() => import('./pages/DataEntryModule').then((m) => ({ default: m.DataEntryModule })));
 
 // Heavy Modals & Print Views
 const GlobalSearchModal = lazy(() => import('./components/layout/GlobalSearchModal').then((m) => ({ default: m.GlobalSearchModal })));
@@ -131,16 +132,22 @@ const MainApp: React.FC = () => {
           currentPath === '/' ||
           currentPath === '/login' ||
           currentPath.startsWith('/account') ||
-          currentPath === '/admin/login'
+          currentPath === '/admin/login' ||
+          currentPath === '/data-entry'
         ) {
           navigate('/admin/dashboard');
+        }
+      } else if (user.role === 'DATA_ENTRY') {
+        if (currentPath !== '/data-entry') {
+          navigate('/data-entry');
         }
       } else {
         if (
           currentPath === '/' ||
           currentPath === '/login' ||
           currentPath.startsWith('/admin') ||
-          currentPath === '/account/login'
+          currentPath === '/account/login' ||
+          currentPath === '/data-entry'
         ) {
           navigate('/account/dashboard');
         }
@@ -151,7 +158,8 @@ const MainApp: React.FC = () => {
         currentPath.startsWith('/account') ||
         currentPath === '/dashboard' ||
         currentPath === '/invoices' ||
-        currentPath === '/parties'
+        currentPath === '/parties' ||
+        currentPath === '/data-entry'
       ) {
         navigate('/login');
       }
@@ -262,12 +270,26 @@ const MainApp: React.FC = () => {
       <Login
         onSuccess={(role) => {
           setLogoutNotice(null);
-          const target = role === 'ADMIN' ? '/admin/dashboard' : '/account/dashboard';
+          const target =
+            role === 'ADMIN'
+              ? '/admin/dashboard'
+              : role === 'DATA_ENTRY'
+              ? '/data-entry'
+              : '/account/dashboard';
           navigate(target);
         }}
         logoutMessage={logoutNotice}
         onClearLogoutMessage={() => setLogoutNotice(null)}
       />
+    );
+  }
+
+  // STRICT OPERATOR ISOLATION: Data Entry Operator receives ONLY the dedicated module
+  if (user.role === 'DATA_ENTRY') {
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <DataEntryModule onSignOut={handleSignOut} />
+      </Suspense>
     );
   }
 
