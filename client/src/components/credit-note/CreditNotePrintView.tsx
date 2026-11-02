@@ -14,6 +14,7 @@ import {
 import { Invoice } from '../../types/index';
 import { formatCurrency, numberToWords } from '../../utils/currency';
 import { InvoiceWatermark } from '../common/InvoiceWatermark';
+import { api } from '../../services/api';
 
 interface CreditNotePrintViewProps {
   invoice: Invoice;
@@ -72,14 +73,17 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
     window.print();
   };
 
-  const handleDownloadPdf = () => {
-    const downloadUrl = `/api/invoices/${invoice.id}/pdf`;
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = `Credit_Note_${invoice.invoiceNumber.replace(/\//g, '_')}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const [downloading, setDownloading] = useState(false);
+  const handleDownloadPdf = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await api.downloadInvoicePdf(invoice.id, invoice.invoiceNumber);
+    } catch (err: any) {
+      alert(err.message || 'Failed to download Credit Note PDF. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleCopyLink = () => {
@@ -563,11 +567,12 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
 
             <button
               onClick={handleDownloadPdf}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-100 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700 shadow-xs"
+              disabled={downloading}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-100 hover:bg-slate-700 hover:text-white transition-colors border border-slate-700 shadow-xs disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5 text-red-400" />
-              <span className="hidden sm:inline">Download PDF</span>
-              <span className="sm:hidden">PDF</span>
+              <span className="hidden sm:inline">{downloading ? 'Downloading...' : 'Download PDF'}</span>
+              <span className="sm:hidden">{downloading ? '...' : 'PDF'}</span>
             </button>
 
             <button

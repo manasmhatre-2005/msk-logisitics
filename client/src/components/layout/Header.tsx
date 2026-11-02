@@ -16,7 +16,6 @@ import {
   Menu,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { UserRole } from '../../types/index';
 
 interface HeaderProps {
   onOpenSearch: () => void;
@@ -37,7 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSignOut,
   onToggleMobileNav,
 }) => {
-  const { user, switchDemoRole, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -81,14 +80,6 @@ export const Header: React.FC<HeaderProps> = ({
       setIsSigningOut(false);
     }
   };
-
-  const roles: { role: UserRole; title: string; color: string }[] = [
-    { role: 'ADMIN', title: 'Admin (All Access)', color: 'text-red-700' },
-    { role: 'ACCOUNT_MANAGER', title: 'Account Manager (Finance & Bills)', color: 'text-blue-700' },
-    { role: 'BILLING', title: 'Billing Executive', color: 'text-red-600' },
-    { role: 'OPERATIONS', title: 'Operations Executive', color: 'text-amber-600' },
-    { role: 'DATA_ENTRY', title: 'Data Entry Operator', color: 'text-purple-600' },
-  ];
 
   const roleDisplay = user?.role === 'ACCOUNT_MANAGER' ? 'ACCOUNT' : (user?.role || 'ADMIN');
   const userInitials = user?.name ? user.name.charAt(0).toUpperCase() : 'A';
@@ -240,30 +231,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-200 uppercase">
                   {user?.role}
                 </span>
-              </div>
-
-              {/* Demo Role Switcher (Development & Testing) */}
-              <div className="px-3.5 py-2 border-b border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Switch Active Role
-                </span>
-                <div className="space-y-1">
-                  {roles.map((r) => (
-                    <button
-                      key={r.role}
-                      onClick={async () => {
-                        await switchDemoRole(r.role);
-                        setProfileMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-2 py-1 rounded text-[11px] flex items-center justify-between hover:bg-slate-50 transition-colors ${
-                        user?.role === r.role ? 'font-bold bg-slate-100' : 'text-slate-700'
-                      }`}
-                    >
-                      <span className={r.color}>{r.title}</span>
-                      {user?.role === r.role && <span className="text-emerald-600 font-bold">✓</span>}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Sign Out Option */}

@@ -244,8 +244,57 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ reason }),
     }),
-  getInvoicePdfUrl: (id: string, templateId?: string) =>
-    `/api/invoices/${id}/pdf${templateId ? `?templateId=${encodeURIComponent(templateId)}` : ''}`,
+  deleteInvoice: (id: string) =>
+    request<{ success: boolean; message: string }>(`/invoices/${id}`, {
+      method: 'DELETE',
+    }),
+  getInvoicePdfUrl: (id: string, templateId?: string, download?: boolean) => {
+    const token = localStorage.getItem('logibill_token') || sessionStorage.getItem('logibill_token');
+    const params = new URLSearchParams();
+    if (templateId) params.set('templateId', templateId);
+    if (download) params.set('download', '1');
+    if (token) params.set('token', token);
+    const qs = params.toString();
+    return `/api/invoices/${id}/pdf${qs ? `?${qs}` : ''}`;
+  },
+  downloadInvoicePdf: async (id: string, invoiceNumber: string, templateId?: string): Promise<void> => {
+    const token = localStorage.getItem('logibill_token') || sessionStorage.getItem('logibill_token');
+    const params = new URLSearchParams();
+    if (templateId) params.set('templateId', templateId);
+    params.set('download', '1');
+    if (token) params.set('token', token);
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`/api/invoices/${id}/pdf?${params.toString()}`, {
+      headers,
+    });
+
+    if (!res.ok) {
+      let errMessage = 'Failed to download invoice PDF';
+      try {
+        const data = await res.json();
+        if (data.error) errMessage = data.error;
+      } catch {
+        // ignore
+      }
+      throw new Error(errMessage);
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const safeNumber = (invoiceNumber || 'Invoice').replace(/[/\\?%*:|"<>]/g, '_');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Invoice_${safeNumber}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
   verifyCreditNote: (token: string) => request<any>(`/credit-notes/verify/${token}`),
   verifyInvoice: (token: string) => request<any>(`/invoices/verify/${token}`),
   verifyHtBill: (token: string) => request<any>(`/invoices/verify/${token}`),

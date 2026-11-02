@@ -67,6 +67,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
     fetchDashboard();
   }, []);
 
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const handleDownloadInvoice = async (inv: any) => {
+    if (downloadingId) return;
+    setDownloadingId(inv.id);
+    try {
+      await api.downloadInvoicePdf(inv.id, inv.invoiceNumber);
+    } catch (err: any) {
+      alert(err.message || 'Failed to download invoice PDF.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const handleBannerSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (onOpenSearch) {
@@ -784,15 +797,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          <a
-                            href={`/api/invoices/${inv.id}/pdf`}
-                            target="_blank"
-                            rel="noreferrer"
-                            title="Download PDF"
-                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-slate-100 transition-colors"
+                          <button
+                            onClick={() => handleDownloadInvoice(inv)}
+                            disabled={downloadingId === inv.id}
+                            title="Download Official PDF"
+                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
                           >
                             <Download className="w-3.5 h-3.5" />
-                          </a>
+                          </button>
                           <button
                             onClick={() => onPrintInvoice(inv)}
                             title="Print Invoice"

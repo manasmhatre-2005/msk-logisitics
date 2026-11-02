@@ -73,14 +73,17 @@ export const EmptyContainerPrintView: React.FC<EmptyContainerPrintViewProps> = (
     window.print();
   };
 
-  const handleDownloadPdf = () => {
-    const url = api.getInvoicePdfUrl(invoice.id);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Empty_Container_Bill_${invoice.invoiceNumber.replace(/[\/\\]/g, '_')}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const [downloading, setDownloading] = useState(false);
+  const handleDownloadPdf = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await api.downloadInvoicePdf(invoice.id, invoice.invoiceNumber);
+    } catch (err: any) {
+      alert(err.message || 'Failed to download Empty Container PDF. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   const handleCopyVerifyUrl = () => {
@@ -599,11 +602,12 @@ export const EmptyContainerPrintView: React.FC<EmptyContainerPrintViewProps> = (
 
             <button
               onClick={handleDownloadPdf}
-              className="flex items-center gap-1.5 border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+              disabled={downloading}
+              className="flex items-center gap-1.5 border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >
               <Download className="w-3.5 h-3.5 text-slate-400" />
-              <span className="hidden sm:inline">Download PDF</span>
-              <span className="sm:hidden">PDF</span>
+              <span className="hidden sm:inline">{downloading ? 'Downloading...' : 'Download PDF'}</span>
+              <span className="sm:hidden">{downloading ? '...' : 'PDF'}</span>
             </button>
 
             <button

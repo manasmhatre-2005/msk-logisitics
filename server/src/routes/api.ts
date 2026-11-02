@@ -73,38 +73,39 @@ router.put('/exporters/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACC
 router.delete('/exporters/:id', requireRole(['ADMIN']), ExporterController.delete);
 
 // Jobs & Shipments
-router.get('/jobs', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.getAll);
-router.get('/jobs/next-number', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.getNextNumber);
-router.get('/jobs/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.getById);
-router.post('/jobs', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.create);
-router.put('/jobs/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.update);
+router.get('/jobs', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), JobController.getAll);
+router.get('/jobs/next-number', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), JobController.getNextNumber);
+router.get('/jobs/:id', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), JobController.getById);
+router.post('/jobs', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), JobController.create);
+router.put('/jobs/:id', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), JobController.update);
 router.delete('/jobs/:id', requireRole(['ADMIN']), JobController.delete);
 
 // Containers
-router.get('/containers', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ContainerController.getAll);
-router.get('/containers/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ContainerController.getById);
-router.post('/containers', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ContainerController.create);
-router.put('/containers/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), ContainerController.update);
+router.get('/containers', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), ContainerController.getAll);
+router.get('/containers/:id', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), ContainerController.getById);
+router.post('/containers', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), ContainerController.create);
+router.put('/containers/:id', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), ContainerController.update);
 router.delete('/containers/:id', requireRole(['ADMIN']), ContainerController.delete);
 router.post('/containers/calculate-dates', ContainerController.calculateDates);
 
 // Charges & Rates
-router.get('/charges', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ChargeController.getAll);
-router.post('/charges', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ChargeController.create);
-router.put('/charges/:id', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), ChargeController.update);
+router.get('/charges', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), ChargeController.getAll);
+router.post('/charges', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), ChargeController.create);
+router.put('/charges/:id', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), ChargeController.update);
 router.delete('/charges/:id', requireRole(['ADMIN']), ChargeController.delete);
 
 // Invoices (Strictly restricted from Data Entry Operators)
-router.get('/invoices', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.getAll);
-router.get('/invoices/next-number', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.getNextInvoiceNumber);
-router.get('/invoices/:id', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.getById);
-router.post('/invoices/calculate', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.calculate);
-router.post('/invoices', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.create);
-router.put('/invoices/:id', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.update);
-router.post('/invoices/:id/finalize', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.finalize);
-router.post('/invoices/:id/cancel', requireRole(['ADMIN']), InvoiceController.cancel);
-router.get('/invoices/:id/pdf', requireRole(['ADMIN', 'BILLING', 'ACCOUNT_MANAGER']), InvoiceController.getPdf);
-router.post('/invoices/:id/email', requireRole(['ADMIN', 'BILLING', 'OPERATIONS', 'ACCOUNT_MANAGER']), InvoiceController.sendEmail);
+router.get('/invoices', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), InvoiceController.getAll);
+router.get('/invoices/next-number', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), InvoiceController.getNextInvoiceNumber);
+router.get('/invoices/:id', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), InvoiceController.getById);
+router.post('/invoices/calculate', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), InvoiceController.calculate);
+router.post('/invoices', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), InvoiceController.create);
+router.put('/invoices/:id', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), InvoiceController.update);
+router.post('/invoices/:id/finalize', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), InvoiceController.finalize);
+router.post('/invoices/:id/cancel', requireRole(['ADMIN', 'ACCOUNT_MANAGER']), InvoiceController.cancel);
+router.delete('/invoices/:id', requireRole(['ADMIN']), InvoiceController.delete);
+router.get('/invoices/:id/pdf', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING']), InvoiceController.getPdf);
+router.post('/invoices/:id/email', requireRole(['ADMIN', 'ACCOUNT_MANAGER', 'BILLING', 'OPERATIONS']), InvoiceController.sendEmail);
 
 // Payments (Strictly restricted from Data Entry Operators)
 router.get('/payments/outstanding', requireRole(['ADMIN', 'ACCOUNTANT', 'ACCOUNT_MANAGER', 'BILLING']), PaymentController.getPartyOutstanding);

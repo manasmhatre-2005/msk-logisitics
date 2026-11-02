@@ -42,8 +42,8 @@ function formatCurrency(n: number | null | undefined, currency = 'INR'): string 
 }
 
 /**
- * Draw official subtle MSK Logistic Solution watermark in the exact center of every invoice page.
- * Keeps opacity at 0.07 (within 5-10% corporate standard) and preserves the original 2:1 logo aspect ratio.
+ * Draw official MSK Logistic Solution watermark in the exact center of every invoice page.
+ * Keeps opacity at 0.14 (14% opacity - bold, prominent corporate watermark) and 82% width.
  */
 function drawPageWatermark(doc: any): void {
   try {
@@ -57,15 +57,15 @@ function drawPageWatermark(doc: any): void {
     const pageHeight = doc.page.height || 841.89;
 
     // Logo aspect ratio is 2:1 (1024 x 512).
-    // Width 370 pt fits centered with ample margins on A4
-    const wmWidth = Math.min(370, pageWidth * 0.65);
+    // Distinctly larger (approx. 78-84% width), centered horizontally and vertically
+    const wmWidth = Math.min(480, pageWidth * 0.82);
     const wmHeight = wmWidth / 2;
 
     const x = (pageWidth - wmWidth) / 2;
     const y = (pageHeight - wmHeight) / 2;
 
     doc.save();
-    doc.opacity(0.07); // 7% opacity: subtle, non-intrusive, corporate watermark
+    doc.opacity(0.14); // 14% opacity: bold, prominent, corporate watermark
     doc.image(watermarkPath, x, y, {
       width: wmWidth,
       height: wmHeight,

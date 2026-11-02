@@ -709,10 +709,49 @@ export class InvoiceController {
     }
   }
 
+  static async delete(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const invoice = await prisma.invoice.findUnique({
+        where: { id },
+        include: { payments: true },
+      });
+
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+
+      if (invoice.payments && invoice.payments.length > 0) {
+        return res.status(400).json({
+          error: 'Cannot delete invoice with recorded payments. Please void or cancel the payments first.',
+        });
+      }
+
+      await prisma.$transaction([
+        prisma.invoiceItem.deleteMany({ where: { invoiceId: id } }),
+        prisma.invoiceContainer.deleteMany({ where: { invoiceId: id } }),
+        prisma.document.deleteMany({ where: { entityType: 'INVOICE', entityId: id } }),
+        prisma.invoice.delete({ where: { id } }),
+      ]);
+
+      await logAudit({
+        action: 'DELETE',
+        entityType: 'INVOICE',
+        entityId: id,
+        details: `Deleted invoice ${invoice.invoiceNumber} (${invoice.status})`,
+        req,
+      });
+
+      return res.json({ success: true, message: `Invoice ${invoice.invoiceNumber} deleted successfully` });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   static async getPdf(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const { templateId, forceRegenerate } = req.query;
+      const { templateId, forceRegenerate, download } = req.query;
       const invoice = await prisma.invoice.findUnique({ where: { id } });
       if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
 
@@ -747,8 +786,9 @@ export class InvoiceController {
       }
 
       const filename = `Invoice_${invoice.invoiceNumber.replace(/[\/\\]/g, '_')}.pdf`;
+      const isDownload = download === '1' || download === 'true';
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+      res.setHeader('Content-Disposition', `${isDownload ? 'attachment' : 'inline'}; filename="${filename}"`);
       res.setHeader('Content-Length', pdfBuffer.length);
 
       return res.send(pdfBuffer);

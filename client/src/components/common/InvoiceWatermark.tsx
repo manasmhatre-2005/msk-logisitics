@@ -1,19 +1,19 @@
 import React from 'react';
 
 interface InvoiceWatermarkProps {
-  opacity?: number; // Default 0.07 (7% opacity - within 5-10% corporate standard)
-  maxWidth?: string; // Default 540px
+  opacity?: number; // Default 0.14 (14% opacity - bold, prominent corporate watermark)
+  maxWidth?: string; // Default 640px
   className?: string;
 }
 
 /**
  * Shared official MSK Logistic Solution Invoice Watermark Component
- * Renders subtly in the exact horizontal and vertical center of every invoice page,
+ * Renders prominently in the exact horizontal and vertical center of every invoice page,
  * strictly behind all text, tables, totals, signatures, and QR codes.
  */
 export const InvoiceWatermark: React.FC<InvoiceWatermarkProps> = ({
-  opacity = 0.07,
-  maxWidth = '540px',
+  opacity = 0.14,
+  maxWidth = '640px',
   className = '',
 }) => {
   return (
@@ -28,14 +28,14 @@ export const InvoiceWatermark: React.FC<InvoiceWatermarkProps> = ({
       <img
         src="/images/msk-invoice-watermark.png"
         alt=""
-        className="w-[74%] max-w-[540px] object-contain block select-none pointer-events-none"
+        className="w-[84%] max-w-[640px] object-contain block select-none pointer-events-none"
         style={{
           opacity,
           maxWidth,
           aspectRatio: '2 / 1',
           pointerEvents: 'none',
           userSelect: 'none',
-          filter: 'contrast(1.05)',
+          filter: 'contrast(1.15) saturate(1.1)',
         }}
         onError={(e) => {
           // Graceful fallback if custom path is relocated

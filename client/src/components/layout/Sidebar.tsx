@@ -7,7 +7,6 @@ import {
   BadgePercent,
   FileText,
   CreditCard,
-  UserCheck,
   Settings,
   Truck,
   ShieldCheck,
@@ -58,7 +57,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'charges', label: 'Charges & Rates', icon: BadgePercent },
     { id: 'invoices', label: 'Invoices & Billing', icon: FileText },
     { id: 'payments', label: 'Payment Register', icon: CreditCard },
-    { id: 'users', label: 'User Management', icon: UserCheck },
     { id: 'settings', label: 'Company Settings', icon: Settings },
   ];
 

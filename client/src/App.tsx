@@ -24,7 +24,6 @@ const HtBillVerificationPage = lazy(() => import('./pages/HtBillVerificationPage
 const EmptyContainerVerificationPage = lazy(() => import('./pages/EmptyContainerVerificationPage').then((m) => ({ default: m.EmptyContainerVerificationPage })));
 const PaymentsPage = lazy(() => import('./pages/PaymentsPage').then((m) => ({ default: m.PaymentsPage })));
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
-const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default: m.UsersPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
 const DataEntryModule = lazy(() => import('./pages/DataEntryModule').then((m) => ({ default: m.DataEntryModule })));
@@ -84,10 +83,31 @@ const MainApp: React.FC = () => {
   const [isEmptyContainerFormOpen, setIsEmptyContainerFormOpen] = useState(false);
   const [prefilledPartyForWizard, setPrefilledPartyForWizard] = useState<Partial<Party> | null>(null);
 
-  // Sync state with browser location
+  // Sync state with browser location & popstate for seamless Back/Forward button support
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname);
+      const pathname = window.location.pathname;
+      setCurrentPath(pathname);
+
+      const matchInvoice = pathname.match(/\/(?:admin|account)\/invoices\/(.+)/);
+      if (matchInvoice) {
+        setCurrentTab('invoices');
+        setSelectedInvoiceId(matchInvoice[1]);
+        return;
+      }
+
+      const matchTab = pathname.match(/\/(?:admin|account)\/([a-z\-]+)/);
+      if (matchTab) {
+        const tab = matchTab[1];
+        if (tab === 'invoices') {
+          setCurrentTab('invoices');
+          setSelectedInvoiceId(null);
+        } else if (['dashboard', 'parties', 'exporters', 'jobs', 'containers', 'charges', 'payments', 'reports', 'settings', 'audit'].includes(tab)) {
+          setCurrentTab(tab);
+          setSelectedPartyId(null);
+          setSelectedInvoiceId(null);
+        }
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -294,9 +314,23 @@ const MainApp: React.FC = () => {
     );
   }
 
-  const handleOpenCreateInvoice = (partyData?: Partial<Party> | null) => {
+  const handleOpenCreateInvoice = (partyData?: Partial<Party> | null, billType?: BillType | 'STANDARD') => {
     setPrefilledPartyForWizard(partyData || null);
-    setIsBillTypeModalOpen(true);
+    if (!billType) {
+      setIsBillTypeModalOpen(true);
+    } else if (billType === 'EMPTY_CONTAINER') {
+      setIsEmptyContainerFormOpen(true);
+    } else if (billType === 'CREDIT_NOTE') {
+      setIsCreditNoteFormOpen(true);
+    } else if (billType === 'HT_BILL') {
+      setIsHtBillFormOpen(true);
+    } else if (billType === 'FORWARDING') {
+      setSelectedBillType('FORWARDING');
+      setIsInvoiceWizardOpen(true);
+    } else {
+      setSelectedBillType(null);
+      setIsInvoiceWizardOpen(true);
+    }
   };
 
   const handleSelectBillType = (billType: BillType) => {
@@ -340,6 +374,7 @@ const MainApp: React.FC = () => {
           setCurrentTab(tab);
           setSelectedPartyId(null);
           setSelectedInvoiceId(null);
+          navigate(user.role === 'ADMIN' ? `/admin/${tab}` : `/account/${tab}`);
         }}
         onOpenInvoiceWizard={() => handleOpenCreateInvoice()}
         isOpen={isMobileNavOpen}
@@ -442,13 +477,19 @@ const MainApp: React.FC = () => {
             selectedInvoiceId ? (
               <InvoiceDetailPage
                 invoiceId={selectedInvoiceId}
-                onBack={() => setSelectedInvoiceId(null)}
+                onBack={() => {
+                  setSelectedInvoiceId(null);
+                  navigate(user.role === 'ADMIN' ? '/admin/invoices' : '/account/invoices');
+                }}
                 onPrint={(inv) => handlePrintInvoice(inv)}
               />
             ) : (
               <InvoicesPage
-                onCreateInvoice={() => handleOpenCreateInvoice()}
-                onViewInvoice={(id) => setSelectedInvoiceId(id)}
+                onCreateInvoice={(type) => handleOpenCreateInvoice(null, type)}
+                onViewInvoice={(id) => {
+                  setSelectedInvoiceId(id);
+                  navigate(user.role === 'ADMIN' ? `/admin/invoices/${id}` : `/account/invoices/${id}`);
+                }}
                 onPrintInvoice={(inv) => handlePrintInvoice(inv)}
               />
             )
@@ -460,6 +501,7 @@ const MainApp: React.FC = () => {
               onViewInvoice={(id) => {
                 setSelectedInvoiceId(id);
                 setCurrentTab('invoices');
+                navigate(user.role === 'ADMIN' ? `/admin/invoices/${id}` : `/account/invoices/${id}`);
               }}
               onPrintInvoice={(inv) => handlePrintInvoice(inv)}
             />
@@ -467,9 +509,6 @@ const MainApp: React.FC = () => {
 
           {/* Reports */}
           {currentTab === 'reports' && <ReportsPage />}
-
-          {/* Users & Roles (ADMIN ONLY) */}
-          {currentTab === 'users' && user.role === 'ADMIN' && <UsersPage />}
 
           {/* Settings (ADMIN ONLY) */}
           {currentTab === 'settings' && user.role === 'ADMIN' && <SettingsPage />}

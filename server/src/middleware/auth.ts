@@ -36,15 +36,17 @@ export function invalidateUserSession(userId?: string) {
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
+    let token: string | undefined;
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'Authentication required. Missing or invalid Bearer token.' });
-      return;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query && typeof req.query.token === 'string' && req.query.token.trim()) {
+      // Support dual-token authentication for PDF document streaming and print navigations
+      token = req.query.token.trim();
     }
 
-    const token = authHeader.split(' ')[1];
     if (!token) {
-      res.status(401).json({ error: 'Authentication token missing.' });
+      res.status(401).json({ error: 'Authentication required. Missing Bearer token or authorization token parameter.' });
       return;
     }
 
@@ -97,11 +99,11 @@ export const requireRole = (allowedRoles: string[]) => {
       return;
     }
 
-    if (req.user.role === 'ADMIN' || allowedRoles.includes(req.user.role)) {
+    if (allowedRoles.includes(req.user.role)) {
       next();
       return;
     }
 
-    res.status(403).json({ error: `Access denied. Requires one of roles: ${allowedRoles.join(', ')}` });
+    res.status(403).json({ error: `Access denied. Insufficient permissions for role '${req.user.role}'. Allowed roles: ${allowedRoles.join(', ')}` });
   };
 };

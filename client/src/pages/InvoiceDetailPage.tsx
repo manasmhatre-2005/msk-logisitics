@@ -47,6 +47,19 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
   // Sharing Modals State
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!invoice || downloadingPdf) return;
+    setDownloadingPdf(true);
+    try {
+      await api.downloadInvoicePdf(invoice.id, invoice.invoiceNumber);
+    } catch (err: any) {
+      alert(err.message || 'Failed to download PDF. Please try again.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   useEffect(() => {
     if (!invoice?.verificationToken) return;
@@ -220,15 +233,14 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
             </button>
           )}
 
-          <a
-            href={api.getInvoicePdfUrl(invoice.id)}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors"
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-red-600" />
-            <span>Download PDF</span>
-          </a>
+            <span>{downloadingPdf ? 'Downloading...' : 'Download PDF'}</span>
+          </button>
 
           <button
             onClick={() => onPrint(invoice)}
