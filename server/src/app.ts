@@ -90,15 +90,21 @@ app.use('/auth/login', authLimiter);
 app.use(
   '/images',
   express.static(path.resolve(__dirname, '../public/images'), {
-    maxAge: config.isProduction ? '1d' : 0,
+    maxAge: config.isProduction ? '7d' : '1h',
     etag: true,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+    },
   })
 );
 app.use(
   '/assets',
   express.static(path.resolve(__dirname, '../assets'), {
-    maxAge: config.isProduction ? '1d' : 0,
+    maxAge: config.isProduction ? '7d' : '1h',
     etag: true,
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+    },
   })
 );
 

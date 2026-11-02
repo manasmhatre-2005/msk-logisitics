@@ -171,10 +171,10 @@ export const AccountDashboard: React.FC<AccountDashboardProps> = ({
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-xs font-mono font-bold text-amber-700">
-                    {formatCurrencyWithSymbol(item.balanceDue || item.outstandingAmount || 0)}
+                    {formatCurrencyWithSymbol(item.netOutstanding || item.balanceDue || item.outstandingAmount || 0)}
                   </p>
                   <span className="text-[9px] font-semibold text-slate-400">
-                    {item.unpaidCount || 0} unpaid bills
+                    {item.invoiceCount || item.unpaidCount || 0} unpaid bills
                   </span>
                 </div>
               </div>

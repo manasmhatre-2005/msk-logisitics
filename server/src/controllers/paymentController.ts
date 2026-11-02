@@ -129,6 +129,7 @@ export class PaymentController {
         };
       });
 
+      partySummaries.sort((a, b) => b.netOutstanding - a.netOutstanding);
       return res.json(partySummaries);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });

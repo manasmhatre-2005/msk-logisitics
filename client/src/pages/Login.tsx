@@ -65,6 +65,8 @@ export const Login: React.FC<LoginProps> = ({ onSuccess, logoutMessage, onClearL
           <img
             src="/images/login-card-left-panel.png"
             alt="MSK Logistic Solution - Integrated Logistics Management ERP. Management, Invoicing & Container Operations"
+            loading="eager"
+            decoding="async"
             className="w-full h-auto lg:h-full max-h-[300px] sm:max-h-[380px] lg:max-h-none object-contain lg:object-cover object-center"
           />
           <h1 className="sr-only">

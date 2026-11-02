@@ -10,6 +10,22 @@ export default defineConfig(({ mode }) => {
       sourcemap: false, // Strict: Prevent leaking TypeScript source code maps to browser
       minify: 'esbuild',
       cssMinify: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id: string) {
+            if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+              return 'vendor-react';
+            }
+            if (id.includes('node_modules/lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('node_modules/qrcode') || id.includes('node_modules/clsx') || id.includes('node_modules/tailwind-merge')) {
+              return 'vendor-utils';
+            }
+          },
+        },
+      },
+      chunkSizeWarningLimit: 600,
     },
     esbuild: {
       drop: isProd ? (['console', 'debugger'] as ('console' | 'debugger')[]) : [],

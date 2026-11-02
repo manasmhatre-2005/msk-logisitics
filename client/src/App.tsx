@@ -1,40 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useAuth, AuthProvider } from './context/AuthContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
-import { GlobalSearchModal } from './components/layout/GlobalSearchModal';
-import { InvoiceWizard } from './components/invoice/InvoiceWizard';
 import { BillTypeSelectionModal } from './components/invoice/BillTypeSelectionModal';
-import { InvoicePrintView } from './components/invoice/InvoicePrintView';
-import { CreditNoteForm } from './components/credit-note/CreditNoteForm';
-import { CreditNotePrintView } from './components/credit-note/CreditNotePrintView';
-import { HtBillForm } from './components/ht-bill/HtBillForm';
-import { HtBillPrintView } from './components/ht-bill/HtBillPrintView';
-import { EmptyContainerForm } from './components/empty-container/EmptyContainerForm';
-import { EmptyContainerPrintView } from './components/empty-container/EmptyContainerPrintView';
-import { LogiBillAssistantChatbot } from './components/chat/LogiBillAssistantChatbot';
 import { Modal } from './components/common/Modal';
 
-// Pages
+// Synchronous core entrypoint (always instant on initial paint)
 import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
-import { AccountDashboard } from './pages/AccountDashboard';
-import { PartiesPage } from './pages/PartiesPage';
-import { PartyDetailPage } from './pages/PartyDetailPage';
-import { ExportersPage } from './pages/ExportersPage';
-import { JobsPage } from './pages/JobsPage';
-import { ContainersPage } from './pages/ContainersPage';
-import { ChargesPage } from './pages/ChargesPage';
-import { InvoicesPage } from './pages/InvoicesPage';
-import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
-import { CreditNoteVerificationPage } from './pages/CreditNoteVerificationPage';
-import { HtBillVerificationPage } from './pages/HtBillVerificationPage';
-import { EmptyContainerVerificationPage } from './pages/EmptyContainerVerificationPage';
-import { PaymentsPage } from './pages/PaymentsPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { UsersPage } from './pages/UsersPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { AuditLogPage } from './pages/AuditLogPage';
+
+// Asynchronous code-split page views (loaded on demand)
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
+const AccountDashboard = lazy(() => import('./pages/AccountDashboard').then((m) => ({ default: m.AccountDashboard })));
+const PartiesPage = lazy(() => import('./pages/PartiesPage').then((m) => ({ default: m.PartiesPage })));
+const PartyDetailPage = lazy(() => import('./pages/PartyDetailPage').then((m) => ({ default: m.PartyDetailPage })));
+const ExportersPage = lazy(() => import('./pages/ExportersPage').then((m) => ({ default: m.ExportersPage })));
+const JobsPage = lazy(() => import('./pages/JobsPage').then((m) => ({ default: m.JobsPage })));
+const ContainersPage = lazy(() => import('./pages/ContainersPage').then((m) => ({ default: m.ContainersPage })));
+const ChargesPage = lazy(() => import('./pages/ChargesPage').then((m) => ({ default: m.ChargesPage })));
+const InvoicesPage = lazy(() => import('./pages/InvoicesPage').then((m) => ({ default: m.InvoicesPage })));
+const InvoiceDetailPage = lazy(() => import('./pages/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })));
+const CreditNoteVerificationPage = lazy(() => import('./pages/CreditNoteVerificationPage').then((m) => ({ default: m.CreditNoteVerificationPage })));
+const HtBillVerificationPage = lazy(() => import('./pages/HtBillVerificationPage').then((m) => ({ default: m.HtBillVerificationPage })));
+const EmptyContainerVerificationPage = lazy(() => import('./pages/EmptyContainerVerificationPage').then((m) => ({ default: m.EmptyContainerVerificationPage })));
+const PaymentsPage = lazy(() => import('./pages/PaymentsPage').then((m) => ({ default: m.PaymentsPage })));
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then((m) => ({ default: m.ReportsPage })));
+const UsersPage = lazy(() => import('./pages/UsersPage').then((m) => ({ default: m.UsersPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const AuditLogPage = lazy(() => import('./pages/AuditLogPage').then((m) => ({ default: m.AuditLogPage })));
+
+// Heavy Modals & Print Views
+const GlobalSearchModal = lazy(() => import('./components/layout/GlobalSearchModal').then((m) => ({ default: m.GlobalSearchModal })));
+const InvoiceWizard = lazy(() => import('./components/invoice/InvoiceWizard').then((m) => ({ default: m.InvoiceWizard })));
+const InvoicePrintView = lazy(() => import('./components/invoice/InvoicePrintView').then((m) => ({ default: m.InvoicePrintView })));
+const CreditNoteForm = lazy(() => import('./components/credit-note/CreditNoteForm').then((m) => ({ default: m.CreditNoteForm })));
+const CreditNotePrintView = lazy(() => import('./components/credit-note/CreditNotePrintView').then((m) => ({ default: m.CreditNotePrintView })));
+const HtBillForm = lazy(() => import('./components/ht-bill/HtBillForm').then((m) => ({ default: m.HtBillForm })));
+const HtBillPrintView = lazy(() => import('./components/ht-bill/HtBillPrintView').then((m) => ({ default: m.HtBillPrintView })));
+const EmptyContainerForm = lazy(() => import('./components/empty-container/EmptyContainerForm').then((m) => ({ default: m.EmptyContainerForm })));
+const EmptyContainerPrintView = lazy(() => import('./components/empty-container/EmptyContainerPrintView').then((m) => ({ default: m.EmptyContainerPrintView })));
+const LogiBillAssistantChatbot = lazy(() => import('./components/chat/LogiBillAssistantChatbot').then((m) => ({ default: m.LogiBillAssistantChatbot })));
+
+const ViewLoadingFallback = () => (
+  <div className="flex-1 flex flex-col items-center justify-center p-12 min-h-[350px] text-slate-400">
+    <div className="w-7 h-7 border-2 border-red-500 border-t-transparent rounded-full animate-spin mb-3" />
+    <span className="text-xs font-semibold text-slate-500">Loading module...</span>
+  </div>
+);
 
 import { Party, Invoice, BillType } from './types/index';
 
@@ -215,13 +226,25 @@ const MainApp: React.FC = () => {
 
   // Support public read-only verification of Credit Notes & H & T Bills via QR code scan
   if (verifyToken) {
-    return <CreditNoteVerificationPage token={verifyToken} />;
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <CreditNoteVerificationPage token={verifyToken} />
+      </Suspense>
+    );
   }
   if (verifyHtToken) {
-    return <HtBillVerificationPage token={verifyHtToken} />;
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <HtBillVerificationPage token={verifyHtToken} />
+      </Suspense>
+    );
   }
   if (verifyEmptyToken) {
-    return <EmptyContainerVerificationPage token={verifyEmptyToken} />;
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <EmptyContainerVerificationPage token={verifyEmptyToken} />
+      </Suspense>
+    );
   }
 
   if (loading) {
@@ -315,7 +338,8 @@ const MainApp: React.FC = () => {
 
         {/* Page Content Scroll Area */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          {/* Dashboard: Dedicated view per verified role */}
+          <Suspense fallback={<ViewLoadingFallback />}>
+            {/* Dashboard: Dedicated view per verified role */}
           {currentTab === 'dashboard' && (
             user.role === 'ADMIN' ? (
               <Dashboard
@@ -426,15 +450,19 @@ const MainApp: React.FC = () => {
 
           {/* Audit Log (ADMIN ONLY) */}
           {currentTab === 'audit' && user.role === 'ADMIN' && <AuditLogPage />}
+          </Suspense>
         </main>
       </div>
 
-      {/* Global Search Modal */}
-      <GlobalSearchModal
-        isOpen={isSearchModalOpen}
-        onClose={() => setIsSearchModalOpen(false)}
-        onNavigate={handleNavigateFromSearch}
-      />
+      <Suspense fallback={null}>
+        {/* Global Search Modal */}
+        {isSearchModalOpen && (
+          <GlobalSearchModal
+            isOpen={isSearchModalOpen}
+            onClose={() => setIsSearchModalOpen(false)}
+            onNavigate={handleNavigateFromSearch}
+          />
+        )}
 
       {/* Bill Type Selection Modal */}
       <BillTypeSelectionModal
@@ -536,6 +564,7 @@ const MainApp: React.FC = () => {
 
       {/* AI Assistant Chatbot */}
       <LogiBillAssistantChatbot />
+      </Suspense>
     </div>
   );
 };

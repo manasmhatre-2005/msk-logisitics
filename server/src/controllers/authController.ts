@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../prisma.js';
 import { config } from '../config/index.js';
-import { AuthRequest } from '../middleware/auth.js';
+import { AuthRequest, invalidateUserSession } from '../middleware/auth.js';
 import { logAudit } from '../middleware/audit.js';
 
 export class AuthController {
@@ -112,6 +112,7 @@ export class AuthController {
           userName: logoutUserName || 'User',
           req,
         });
+        invalidateUserSession(logoutUserId);
       }
 
       // Clear standard authentication cookies if set by browser/reverse proxy

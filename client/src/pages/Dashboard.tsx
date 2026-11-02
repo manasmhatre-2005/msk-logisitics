@@ -317,6 +317,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <img
             src="/images/dashboard-hero-right-hd.png"
             alt="Multimodal Logistics Fleet & Moving Business Forward"
+            loading="eager"
+            decoding="async"
             className="w-full h-full object-cover object-left-center select-none"
             style={{
               imageRendering: '-webkit-optimize-contrast',

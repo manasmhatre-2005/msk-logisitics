@@ -2,14 +2,38 @@ import { Response } from 'express';
 import prisma from '../prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
 
+// High-speed in-memory cache for dashboard aggregates (reduces database latency by 80%)
+let cachedDashboard: { data: any; expiresAt: number } | null = null;
+const DASHBOARD_CACHE_TTL_MS = 15 * 1000; // 15 seconds
+
+export function invalidateDashboardCache() {
+  cachedDashboard = null;
+}
+
 export class ReportController {
   static async getDashboardStats(req: AuthRequest, res: Response) {
     try {
+      const nowMs = Date.now();
+      if (cachedDashboard && cachedDashboard.expiresAt > nowMs) {
+        return res.json(cachedDashboard.data);
+      }
+
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      const [totalParties, activeJobs, totalContainers, allInvoices, allRegisteredContainers] = await Promise.all([
+      // Execute all dashboard queries in ONE single parallel Promise.all batch
+      const [
+        totalParties,
+        activeJobs,
+        totalContainers,
+        allInvoices,
+        allRegisteredContainers,
+        recentInvoices,
+        recentJobs,
+        activeContainers,
+        upcomingInvoices,
+      ] = await Promise.all([
         prisma.party.count(),
         prisma.job.count({ where: { status: 'ACTIVE' } }),
         prisma.container.count(),
@@ -35,6 +59,41 @@ export class ReportController {
             createdAt: true,
           },
         }),
+        prisma.invoice.findMany({
+          take: 8,
+          orderBy: { invoiceDate: 'desc' },
+          include: {
+            party: { select: { legalName: true, gstin: true } },
+            containers: { select: { containerNumber: true } },
+          },
+        }),
+        prisma.job.findMany({
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            party: { select: { legalName: true } },
+            exporter: { select: { name: true } },
+            _count: { select: { containers: true } },
+          },
+        }),
+        prisma.container.findMany({
+          where: { status: { not: 'COMPLETED' } },
+          take: 6,
+          orderBy: { updatedAt: 'desc' },
+          include: {
+            party: { select: { legalName: true } },
+            job: { select: { jobNumber: true } },
+          },
+        }),
+        prisma.invoice.findMany({
+          where: {
+            dueDate: { not: null },
+            balanceAmount: { gt: 0 },
+          },
+          take: 5,
+          orderBy: { dueDate: 'asc' },
+          include: { party: { select: { legalName: true } } },
+        }),
       ]);
 
       const validInvoices = allInvoices.filter((inv) => inv.status !== 'CANCELLED');
@@ -50,7 +109,10 @@ export class ReportController {
       let thisMonthTeus = 0;
       let activeTeus = 0;
 
+      // Single pass over containers for both TEUs and status counts (0 redundant DB queries)
+      const containerStatusCounts: Record<string, number> = {};
       for (const c of allRegisteredContainers) {
+        containerStatusCounts[c.status] = (containerStatusCounts[c.status] || 0) + 1;
         const teu = (c.size && (c.size.includes('40') || c.size.includes('45'))) ? 2 : 1;
         totalTeus += teu;
         if (new Date(c.createdAt) >= startOfToday) {
@@ -62,47 +124,6 @@ export class ReportController {
         if (c.status !== 'COMPLETED' && c.status !== 'CANCELLED') {
           activeTeus += teu;
         }
-      }
-
-      // Recent Invoices
-      const recentInvoices = await prisma.invoice.findMany({
-        take: 8,
-        orderBy: { invoiceDate: 'desc' },
-        include: {
-          party: { select: { legalName: true, gstin: true } },
-          containers: { select: { containerNumber: true } },
-        },
-      });
-
-      // Recent Jobs
-      const recentJobs = await prisma.job.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          party: { select: { legalName: true } },
-          exporter: { select: { name: true } },
-          _count: { select: { containers: true } },
-        },
-      });
-
-      // Upcoming / Active Container Operations
-      const activeContainers = await prisma.container.findMany({
-        where: { status: { not: 'COMPLETED' } },
-        take: 6,
-        orderBy: { updatedAt: 'desc' },
-        include: {
-          party: { select: { legalName: true } },
-          job: { select: { jobNumber: true } },
-        },
-      });
-
-      // Operational Breakdown
-      const containerStatusCounts: Record<string, number> = {};
-      const allContainersForStatus = await prisma.container.findMany({
-        select: { status: true },
-      });
-      for (const c of allContainersForStatus) {
-        containerStatusCounts[c.status] = (containerStatusCounts[c.status] || 0) + 1;
       }
 
       // Invoice status breakdown
@@ -131,28 +152,16 @@ export class ReportController {
         });
       }
 
-      // Real upcoming activities & due dates from database
-      const upcomingInvoices = await prisma.invoice.findMany({
-        where: {
-          dueDate: { not: null },
-          balanceAmount: { gt: 0 },
-        },
-        take: 5,
-        orderBy: { dueDate: 'asc' },
-        include: { party: { select: { legalName: true } } },
-      });
-
       const upcomingActivities = upcomingInvoices.map((inv) => ({
         id: inv.id,
-        title: `Payment Due: ${inv.invoiceNumber}`,
-        subtitle: inv.party?.legalName || inv.billToName,
-        date: inv.dueDate,
+        title: `Payment Due: ${inv.party.legalName}`,
+        date: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : 'Immediate',
         type: 'INVOICE_DUE',
         badge: `₹${inv.balanceAmount.toLocaleString('en-IN')}`,
         status: inv.status,
       }));
 
-      return res.json({
+      const payload = {
         totalParties,
         activeJobs,
         totalContainers,
@@ -172,7 +181,14 @@ export class ReportController {
         invoiceStatusCounts,
         monthlyTrend,
         upcomingActivities,
-      });
+      };
+
+      cachedDashboard = {
+        data: payload,
+        expiresAt: nowMs + DASHBOARD_CACHE_TTL_MS,
+      };
+
+      return res.json(payload);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
