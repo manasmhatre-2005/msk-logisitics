@@ -253,9 +253,12 @@ export interface Exporter {
   _count?: { jobs: number; containers: number; invoices: number };
 }
 
+export type JobFormatType = 'FORMAT_1' | 'FORMAT_2' | 'FORMAT_3';
+
 export interface Job {
   id: string;
   jobNumber: string;
+  formatType?: JobFormatType | string;
   partyId: string;
   party: Party;
   exporterId?: string;

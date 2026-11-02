@@ -114,11 +114,33 @@ export const api = {
     request<{ message: string }>(`/exporters/${id}`, { method: 'DELETE' }),
 
   // Jobs
-  getJobs: (status?: string, partyId?: string) => {
+  getJobs: (
+    searchOrParams?: string | { search?: string; status?: string; partyId?: string },
+    status?: string,
+    partyId?: string
+  ) => {
     const params = new URLSearchParams();
-    if (status) params.append('status', status);
-    if (partyId) params.append('partyId', partyId);
+    if (typeof searchOrParams === 'object' && searchOrParams !== null) {
+      if (searchOrParams.search) params.append('search', searchOrParams.search);
+      if (searchOrParams.status) params.append('status', searchOrParams.status);
+      if (searchOrParams.partyId) params.append('partyId', searchOrParams.partyId);
+    } else if (typeof searchOrParams === 'string' && searchOrParams) {
+      params.append('search', searchOrParams);
+      if (status) params.append('status', status);
+      if (partyId) params.append('partyId', partyId);
+    } else {
+      if (status) params.append('status', status);
+      if (partyId) params.append('partyId', partyId);
+    }
     return request<Job[]>(`/jobs?${params.toString()}`);
+  },
+  getNextJobNumber: (formatType: string = 'FORMAT_1', date?: string) => {
+    const params = new URLSearchParams();
+    if (formatType) params.append('formatType', formatType);
+    if (date) params.append('date', date);
+    return request<{ formatType: string; nextNumber: string; financialYear: string; formats?: any }>(
+      `/jobs/next-number?${params.toString()}`
+    );
   },
   getJob: (id: string) => request<Job>(`/jobs/${id}`),
   createJob: (data: Partial<Job>) =>

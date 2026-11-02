@@ -153,6 +153,7 @@ model Exporter {
 model Job {
   id             String      @id @default(uuid())
   jobNumber      String      @unique
+  formatType     String?     @default("FORMAT_1") // FORMAT_1, FORMAT_2, FORMAT_3, LEGACY
   partyId        String
   party          Party       @relation(fields: [partyId], references: [id])
   exporterId     String?
@@ -447,6 +448,16 @@ model InvoiceSequence {
   updatedAt     DateTime @updatedAt
 
   @@unique([prefix, financialYear])
+}
+
+model JobSequence {
+  id            String   @id // e.g. "FORMAT_1_26-27", "FORMAT_2_GLOBAL", "FORMAT_3_26-27"
+  formatType    String   // FORMAT_1, FORMAT_2, FORMAT_3
+  financialYear String   @default("GLOBAL")
+  currentSeq    Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([formatType, financialYear])
 }
 
 model Document {

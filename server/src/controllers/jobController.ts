@@ -2,14 +2,55 @@ import { Response } from 'express';
 import prisma from '../prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { logAudit } from '../middleware/audit.js';
+import { JobSequenceService, JobFormatType, JOB_FORMATS } from '../services/jobSequenceService.js';
 
 export class JobController {
+  /**
+   * Preview next job number without allocating or incrementing
+   */
+  static async getNextNumber(req: AuthRequest, res: Response) {
+    try {
+      const formatType = (req.query.formatType as JobFormatType) || 'FORMAT_1';
+      const validFormats: JobFormatType[] = ['FORMAT_1', 'FORMAT_2', 'FORMAT_3'];
+      if (!validFormats.includes(formatType)) {
+        return res.status(400).json({
+          error: `Invalid formatType. Must be one of: ${validFormats.join(', ')}`,
+        });
+      }
+
+      const dateStr = req.query.date as string | undefined;
+      const date = dateStr ? new Date(dateStr) : new Date();
+
+      const result = await JobSequenceService.peekNextJobNumber(formatType, date);
+      return res.json({
+        ...result,
+        formats: JOB_FORMATS,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   static async getAll(req: AuthRequest, res: Response) {
     try {
-      const { status, partyId } = req.query;
+      const { status, partyId, search } = req.query;
       const where: any = {};
       if (status) where.status = String(status);
       if (partyId) where.partyId = String(partyId);
+
+      if (search) {
+        const q = String(search).trim();
+        where.OR = [
+          { jobNumber: { contains: q, mode: 'insensitive' } },
+          { sbNumber: { contains: q, mode: 'insensitive' } },
+          { bookingDetails: { contains: q, mode: 'insensitive' } },
+          { destination: { contains: q, mode: 'insensitive' } },
+          { port: { contains: q, mode: 'insensitive' } },
+          { shipmentRef: { contains: q, mode: 'insensitive' } },
+          { party: { legalName: { contains: q, mode: 'insensitive' } } },
+          { exporter: { name: { contains: q, mode: 'insensitive' } } },
+        ];
+      }
 
       const jobs = await prisma.job.findMany({
         where,
@@ -61,38 +102,57 @@ export class JobController {
         destination,
         remarks,
         status = 'ACTIVE',
+        formatType = 'FORMAT_1',
       } = req.body;
 
       if (!partyId) {
         return res.status(400).json({ error: 'Party ID is required' });
       }
 
-      // Generate next Job number if not provided
-      let jobNumber = req.body.jobNumber;
-      if (!jobNumber) {
-        const count = await prisma.job.count();
-        const year = new Date().getFullYear();
-        jobNumber = `JOB-${year}-${String(count + 1).padStart(4, '0')}`;
-      }
+      const dateObj = shipmentDate ? new Date(shipmentDate) : new Date();
 
-      const job = await prisma.job.create({
-        data: {
-          jobNumber,
-          partyId,
-          exporterId,
-          sbNumber,
-          bookingDetails,
-          shipmentRef,
-          shipmentDate: shipmentDate ? new Date(shipmentDate) : null,
-          port,
-          destination,
-          remarks,
-          status,
-        },
-        include: {
-          party: true,
-          exporter: true,
-        },
+      // Concurrency-safe atomic job creation inside database transaction
+      const job = await prisma.$transaction(async (tx) => {
+        let assignedJobNumber = (req.body.jobNumber || '').trim();
+
+        if (!assignedJobNumber || assignedJobNumber === 'AUTO') {
+          // Atomically allocate the next sequence number from JobSequence table
+          const seqResult = await JobSequenceService.getNextJobNumber(
+            tx,
+            formatType as JobFormatType,
+            dateObj
+          );
+          assignedJobNumber = seqResult.jobNumber;
+        } else {
+          // If custom job number was passed, ensure uniqueness
+          const existing = await tx.job.findUnique({
+            where: { jobNumber: assignedJobNumber },
+          });
+          if (existing) {
+            throw new Error(`Job Number "${assignedJobNumber}" already exists.`);
+          }
+        }
+
+        return tx.job.create({
+          data: {
+            jobNumber: assignedJobNumber,
+            formatType: formatType || 'FORMAT_1',
+            partyId,
+            exporterId: exporterId || null,
+            sbNumber,
+            bookingDetails,
+            shipmentRef,
+            shipmentDate: shipmentDate ? new Date(shipmentDate) : null,
+            port,
+            destination,
+            remarks,
+            status,
+          },
+          include: {
+            party: true,
+            exporter: true,
+          },
+        });
       });
 
       await logAudit({
@@ -115,6 +175,42 @@ export class JobController {
       const data = { ...req.body };
       delete data.id;
       if (data.shipmentDate) data.shipmentDate = new Date(data.shipmentDate);
+
+      const existingJob = await prisma.job.findUnique({
+        where: { id },
+        include: { party: true },
+      });
+      if (!existingJob) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      // Job numbers should be immutable after assignment by default.
+      // If an exceptional correction is necessary, restrict it to authorized Admin users and maintain an audit trail.
+      if (data.jobNumber && data.jobNumber !== existingJob.jobNumber) {
+        if (req.user?.role !== 'ADMIN') {
+          return res.status(403).json({
+            error: 'Job numbers are immutable after creation. Only Administrators can modify assigned job numbers.',
+          });
+        }
+
+        // Check if the new job number is already taken
+        const duplicate = await prisma.job.findUnique({
+          where: { jobNumber: data.jobNumber },
+        });
+        if (duplicate && duplicate.id !== id) {
+          return res.status(400).json({
+            error: `Job number "${data.jobNumber}" is already assigned to another job.`,
+          });
+        }
+
+        await logAudit({
+          action: 'UPDATE',
+          entityType: 'JOB',
+          entityId: id,
+          details: `Admin ${req.user?.name || req.user?.email} modified Job Number from "${existingJob.jobNumber}" to "${data.jobNumber}"`,
+          req,
+        });
+      }
 
       const updated = await prisma.job.update({
         where: { id },

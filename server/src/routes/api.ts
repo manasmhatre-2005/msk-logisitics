@@ -74,6 +74,7 @@ router.delete('/exporters/:id', requireRole(['ADMIN']), ExporterController.delet
 
 // Jobs & Shipments
 router.get('/jobs', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.getAll);
+router.get('/jobs/next-number', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.getNextNumber);
 router.get('/jobs/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.getById);
 router.post('/jobs', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.create);
 router.put('/jobs/:id', requireRole(['ADMIN', 'BILLING', 'OPERATIONS']), JobController.update);
