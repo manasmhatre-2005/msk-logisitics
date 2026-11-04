@@ -140,12 +140,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </svg>
 
       {/* Brand Header — Official MSK Logistic Solution Logo in White Rounded Rectangle */}
-      <div className="relative z-10 p-3.5 pb-2">
-        <div className="bg-white rounded-2xl p-2.5 shadow-sm border border-white/20 flex items-center justify-center overflow-hidden h-[86px]">
+      <div className="relative z-10 px-3.5 pt-3.5 pb-2 shrink-0">
+        <div className="bg-white rounded-2xl px-2.5 py-2 shadow-sm border border-white/20 flex items-center justify-center overflow-hidden h-[114px]">
           <img
             src="/images/msk-logo.png"
             alt="MSK LOGISTIC SOLUTION - Beyond logistics We Deliver Trust"
-            className="w-full h-full object-contain block"
+            className="w-full h-full object-contain object-center scale-[1.12] block select-none"
+            loading="eager"
+            decoding="async"
           />
         </div>
 
