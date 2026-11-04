@@ -366,7 +366,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#F2F6FA] overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#F5F7FB] overflow-hidden font-sans">
       {/* Light Professional Sidebar with Mobile Collapsible Drawer */}
       <Sidebar
         currentTab={currentTab}
@@ -398,7 +398,7 @@ const MainApp: React.FC = () => {
         />
 
         {/* Page Content Scroll Area */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-8">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-8 bg-[#F5F7FB]">
           <Suspense fallback={<ViewLoadingFallback />}>
             {/* Dashboard: Dedicated view per verified role */}
           {currentTab === 'dashboard' && (

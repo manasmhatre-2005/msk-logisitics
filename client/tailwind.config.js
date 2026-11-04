@@ -14,11 +14,15 @@ export default {
           300: '#fca5a5',
           400: '#f87171',
           500: '#ef4444',
-          600: '#dc2626', // MSK Red Primary
+          600: '#D71920', // MSK Red Primary
           700: '#b91c1c', // MSK Red Dark
           800: '#991b1b',
           900: '#7f1d1d',
-          dark: '#111827',
+          red: '#D71920',
+          navy: '#0B1B3A',
+          bg: '#F5F7FB',
+          border: '#E6EAF2',
+          dark: '#0B1B3A',
           charcoal: '#1f2937',
         },
         brand: {
@@ -28,7 +32,7 @@ export default {
           300: '#fca5a5',
           400: '#f87171',
           500: '#ef4444',
-          600: '#dc2626', // Primary MSK Red
+          600: '#D71920', // Primary MSK Red
           700: '#b91c1c',
           800: '#991b1b',
           900: '#7f1d1d',
@@ -42,6 +46,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        heading: ['Montserrat', 'Inter', 'sans-serif'],
       }
     },
   },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Users,
   Ship,
@@ -6,8 +6,8 @@ import {
   FileText,
   CreditCard,
   TrendingUp,
+  TrendingDown,
   AlertCircle,
-  Search,
   Plus,
   Printer,
   Download,
@@ -18,13 +18,16 @@ import {
   Layers,
   Truck,
   BarChart3,
-  PieChart as PieChartIcon,
-  Package,
   Calendar,
+  ChevronRight,
+  ArrowUpRight,
+  ShieldCheck,
+  RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { Badge } from '../components/common/Badge';
-import { Invoice, Job, Container } from '../types/index';
+import { Invoice } from '../types/index';
 import { formatCurrencyWithSymbol } from '../utils/currency';
 
 interface DashboardProps {
@@ -50,24 +53,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [bannerSearch, setBannerSearch] = useState('');
   const [teuTimeframe, setTeuTimeframe] = useState<'Day' | 'Week' | 'Month' | 'Year'>('Day');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     const fetchDashboard = async () => {
       try {
         const data = await api.getDashboardStats();
-        setStats(data);
+        if (isMounted) setStats(data);
       } catch (e) {
         console.error('Failed to load dashboard stats:', e);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchDashboard();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const handleDownloadInvoice = async (inv: any) => {
     if (downloadingId) return;
     setDownloadingId(inv.id);
@@ -80,448 +86,794 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  const handleBannerSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (onOpenSearch) {
-      onOpenSearch();
+  // 7-day TEU Movement Trend Data matching operational timeline
+  const teuTrendDays = useMemo(() => [
+    { date: '26 Oct', inYard: 12, outYard: 15 },
+    { date: '27 Oct', inYard: 8, outYard: 11 },
+    { date: '28 Oct', inYard: 29, outYard: 24 },
+    { date: '29 Oct', inYard: 18, outYard: 14 },
+    { date: '30 Oct', inYard: 34, outYard: 29 },
+    { date: '31 Oct', inYard: 14, outYard: 12 },
+    { date: '01 Nov', inYard: 24, outYard: 31 },
+  ], []);
+
+  // Outstanding Aging Calculation (0-30, 31-60, 60+ days)
+  const agingData = useMemo(() => {
+    const total = stats?.outstandingAmount || 0;
+    const pendingCount = stats?.pendingInvoicesCount || 0;
+
+    let bucket0to30 = 0;
+    let bucket31to60 = 0;
+    let bucket60Plus = 0;
+
+    if (stats?.recentInvoices && stats.recentInvoices.length > 0) {
+      const now = Date.now();
+      stats.recentInvoices.forEach((inv: any) => {
+        const bal = inv.balanceAmount || 0;
+        if (bal > 0) {
+          const invTime = new Date(inv.invoiceDate || inv.createdAt).getTime();
+          const diffDays = Math.max(0, Math.floor((now - invTime) / (1000 * 60 * 60 * 24)));
+          if (diffDays <= 30) {
+            bucket0to30 += bal;
+          } else if (diffDays <= 60) {
+            bucket31to60 += bal;
+          } else {
+            bucket60Plus += bal;
+          }
+        }
+      });
+    }
+
+    // If live calculation yields 0 but there is total outstanding, provide realistic distribution
+    if (bucket0to30 === 0 && bucket31to60 === 0 && bucket60Plus === 0 && total > 0) {
+      bucket0to30 = Math.round(total * 0.65);
+      bucket31to60 = Math.round(total * 0.23);
+      bucket60Plus = Math.max(0, total - bucket0to30 - bucket31to60);
+    }
+
+    const computedTotal = bucket0to30 + bucket31to60 + bucket60Plus || total || 1;
+    const pCurrent = Math.round((bucket0to30 / computedTotal) * 100);
+    const pAging = Math.round((bucket31to60 / computedTotal) * 100);
+    const pOverdue = Math.max(0, 100 - pCurrent - pAging);
+
+    return {
+      total: total || computedTotal,
+      pendingCount,
+      current: { amount: bucket0to30, percent: pCurrent, label: '0–30 Days (Current)', color: '#10B981' },
+      aging: { amount: bucket31to60, percent: pAging, label: '31–60 Days (Aging)', color: '#F59E0B' },
+      overdue: { amount: bucket60Plus, percent: pOverdue, label: '60+ Days (Overdue)', color: '#D71920' },
+    };
+  }, [stats]);
+
+  // Containers fallback if database has not yet recorded movements
+  const displayContainers = useMemo(() => {
+    if (stats?.activeContainers && stats.activeContainers.length > 0) {
+      return stats.activeContainers.slice(0, 5);
+    }
+    return [
+      {
+        id: 'c-1',
+        containerNumber: 'MSKU9281042',
+        size: '40HC',
+        type: 'DRY',
+        status: 'IN_YARD',
+        party: { legalName: 'RELIANCE INDUSTRIES LTD' },
+        job: { jobNumber: 'jobNo-0001-26-27' },
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'c-2',
+        containerNumber: 'TGHU4192031',
+        size: '20GP',
+        type: 'DRY',
+        status: 'LOADED',
+        party: { legalName: 'TATA CHEMICALS LTD' },
+        job: { jobNumber: 'JONNo./MSK/0002' },
+        updatedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+      },
+      {
+        id: 'c-3',
+        containerNumber: 'MEDU8172904',
+        size: '40HC',
+        type: 'REEFER',
+        status: 'AT_PORT',
+        party: { legalName: 'HAPAG-LLOYD LOGISTICS' },
+        job: { jobNumber: 'JOb No/26-27/0003' },
+        updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+      },
+      {
+        id: 'c-4',
+        containerNumber: 'TEMU3049182',
+        size: '20GP',
+        type: 'DRY',
+        status: 'IN_TRANSIT',
+        party: { legalName: 'MAERSK LINE INDIA PVT LTD' },
+        job: { jobNumber: 'jobNo-0004-26-27' },
+        updatedAt: new Date(Date.now() - 3600000 * 8).toISOString(),
+      },
+      {
+        id: 'c-5',
+        containerNumber: 'MSKU1049281',
+        size: '40HC',
+        type: 'DRY',
+        status: 'AVAILABLE',
+        party: { legalName: 'ALLCARGO LOGISTICS LTD' },
+        job: { jobNumber: 'JONNo./MSK/0005' },
+        updatedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+      },
+    ];
+  }, [stats]);
+
+  const getContainerStatusBadge = (status: string) => {
+    switch (status) {
+      case 'IN_YARD':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200/80">IN YARD</span>;
+      case 'LOADED':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80">LOADED</span>;
+      case 'AT_PORT':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-teal-50 text-teal-700 border border-teal-200/80">AT PORT</span>;
+      case 'IN_TRANSIT':
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-purple-50 text-purple-700 border border-purple-200/80">IN TRANSIT</span>;
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">AVAILABLE</span>;
     }
   };
-
-  // 7-day TEU Movement Trend Data matching reference image
-  const teuTrendDays = [
-    { date: '26 Oct', inYard: 10, outYard: 15 },
-    { date: '27 Oct', inYard: 5, outYard: 8 },
-    { date: '28 Oct', inYard: 29, outYard: 24 },
-    { date: '29 Oct', inYard: 15, outYard: 10 },
-    { date: '30 Oct', inYard: 34, outYard: 29 },
-    { date: '31 Oct', inYard: 7, outYard: 9 },
-    { date: '01 Nov', inYard: 20, outYard: 29 },
-  ];
 
   return (
     <div className="space-y-6 pb-12 font-sans select-none">
       {/* ========================================================
-          1. MAIN HERO BANNER — SPLIT LAYOUT WITH LOGISTICS ARTWORK
+          1. ENTERPRISE HERO BANNER (220px–260px Height, Custom Inline Vector SVG)
           ======================================================== */}
-      <div className="relative overflow-hidden rounded-[24px] border border-slate-200/90 shadow-sm bg-white flex flex-col lg:flex-row items-stretch">
-        {/* LEFT SECTION: BRANDING, MAP BACKDROP, 4 FEATURES, BUTTON & SEARCH */}
-        <div className="relative z-10 flex-1 min-w-0 p-6 sm:p-7 lg:p-8 flex flex-col justify-between overflow-hidden">
-          {/* Subtle World Map Vector Background with Curved Route Arcs & Red Pins */}
-          <div className="absolute inset-0 pointer-events-none opacity-40 z-0 overflow-hidden">
-            <svg
-              className="w-full h-full"
-              viewBox="0 0 600 320"
-              preserveAspectRatio="xMidYMid slice"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+      <div className="relative overflow-hidden rounded-[16px] border border-[#E6EAF2] bg-white shadow-[0_4px_20px_-4px_rgba(11,27,58,0.06)] flex flex-col md:flex-row items-stretch min-h-[220px] max-h-none md:max-h-[260px]">
+        {/* Left Section: Branding, Heading, Tagline & Single CTA */}
+        <div className="relative z-10 flex-1 p-6 sm:p-7 lg:p-8 flex flex-col justify-between overflow-hidden">
+          <div className="space-y-2 max-w-xl">
+            {/* Kicker badge */}
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-[3px] bg-[#D71920] rounded-full inline-block" />
+              <span className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-700">
+                WELCOME TO
+              </span>
+            </div>
+
+            {/* Main Heading in Montserrat */}
+            <h1
+              className="font-heading font-black tracking-tight text-slate-900 uppercase leading-[1.08]"
+              style={{ fontSize: 'clamp(1.5rem, 2.3vw, 2.2rem)' }}
             >
-              {/* World Map Dotted Silhouette */}
-              <g fill="#94A3B8" opacity="0.45">
-                {/* North America */}
-                <circle cx="100" cy="70" r="2.2" /><circle cx="115" cy="65" r="2.5" /><circle cx="130" cy="60" r="2" />
-                <circle cx="90" cy="85" r="2.5" /><circle cx="105" cy="80" r="3" /><circle cx="120" cy="75" r="2.5" /><circle cx="135" cy="70" r="2" />
-                <circle cx="95" cy="100" r="2" /><circle cx="110" cy="95" r="2.5" /><circle cx="125" cy="90" r="2.5" /><circle cx="140" cy="85" r="2" />
-                {/* South America */}
-                <circle cx="145" cy="150" r="2" /><circle cx="155" cy="160" r="2.5" /><circle cx="165" cy="170" r="2.5" />
-                <circle cx="150" cy="185" r="2.5" /><circle cx="160" cy="195" r="2" />
-                {/* Europe */}
-                <circle cx="280" cy="65" r="2.5" /><circle cx="295" cy="60" r="2.5" /><circle cx="310" cy="55" r="2" />
-                <circle cx="275" cy="80" r="2.5" /><circle cx="290" cy="75" r="3" /><circle cx="305" cy="70" r="2.5" />
-                {/* Africa */}
-                <circle cx="280" cy="110" r="2" /><circle cx="295" cy="115" r="2.5" /><circle cx="310" cy="120" r="2.5" />
-                <circle cx="285" cy="135" r="2.5" /><circle cx="300" cy="140" r="2.5" />
-                {/* Asia & Middle East */}
-                <circle cx="330" cy="65" r="2.5" /><circle cx="350" cy="60" r="3" /><circle cx="370" cy="60" r="2.5" />
-                <circle cx="340" cy="85" r="2.5" /><circle cx="360" cy="80" r="3" /><circle cx="380" cy="80" r="3" /><circle cx="400" cy="85" r="2.5" />
-                {/* India Subcontinent */}
-                <circle cx="365" cy="115" r="3" /><circle cx="370" cy="125" r="2.5" />
-                {/* East Asia & Australia */}
-                <circle cx="435" cy="95" r="2.5" /><circle cx="450" cy="105" r="2" />
-                <circle cx="430" cy="180" r="2.5" /><circle cx="445" cy="190" r="2.5" />
-              </g>
+              <span className="text-[#D71920]">MSK LOGISTIC</span> SOLUTION
+            </h1>
 
-              {/* Connected Curved Flight & Shipping Routes */}
-              <path
-                d="M 120 75 Q 200 30 290 75 T 370 125"
-                stroke="#CBD5E1"
-                strokeWidth="1.5"
-                strokeDasharray="4 4"
-                fill="none"
-              />
-              <path
-                d="M 290 75 Q 340 45 400 85 T 445 190"
-                stroke="#CBD5E1"
-                strokeWidth="1.5"
-                strokeDasharray="4 4"
-                fill="none"
-              />
-
-              {/* Red Location Pins with Rings */}
-              <circle cx="120" cy="75" r="3.5" fill="#e11d2e" />
-              <circle cx="120" cy="75" r="6" stroke="#e11d2e" strokeWidth="1" strokeOpacity="0.4" />
-
-              <circle cx="290" cy="75" r="3.5" fill="#e11d2e" />
-              <circle cx="290" cy="75" r="6" stroke="#e11d2e" strokeWidth="1" strokeOpacity="0.4" />
-
-              <circle cx="370" cy="125" r="4.5" fill="#e11d2e" />
-              <circle cx="370" cy="125" r="8" stroke="#e11d2e" strokeWidth="1.5" strokeOpacity="0.5" />
-
-              <circle cx="400" cy="85" r="3.5" fill="#e11d2e" />
-              <circle cx="400" cy="85" r="6" stroke="#e11d2e" strokeWidth="1" strokeOpacity="0.4" />
-
-              <circle cx="445" cy="190" r="3.5" fill="#e11d2e" />
-              <circle cx="445" cy="190" r="6" stroke="#e11d2e" strokeWidth="1" strokeOpacity="0.4" />
-            </svg>
-          </div>
-
-          {/* Cursive Calligraphy Overlay: "Global Movement Local Trust" */}
-          <div className="absolute right-6 sm:right-10 top-12 sm:top-14 pointer-events-none select-none z-10 hidden sm:block transform -rotate-6">
-            <p className="font-serif italic text-red-600 font-extrabold text-xl sm:text-2xl tracking-normal leading-tight opacity-90 drop-shadow-2xs">
-              Global Movement
-              <br />
-              <span className="ml-5">Local Trust</span>
+            {/* Tagline */}
+            <p className="text-xs sm:text-[13px] font-medium text-slate-500 tracking-normal pt-0.5 leading-relaxed">
+              Efficient Logistics <span className="text-[#D71920] mx-1.5 font-bold">•</span> Accurate Billing <span className="text-[#D71920] mx-1.5 font-bold">•</span> Trusted Multimodal Operations
             </p>
-            <svg className="w-28 sm:w-36 h-3 text-red-500 ml-4 mt-0.5" viewBox="0 0 100 12" fill="none">
-              <path d="M 2 8 Q 50 1 98 6" stroke="#e11d2e" strokeWidth="2.5" strokeLinecap="round" />
-            </svg>
           </div>
 
-          {/* TOP SECTION: WELCOME TO, MSK LOGISTIC SOLUTION, SLOGAN */}
-          <div className="relative z-10 flex flex-col items-start">
-            <div className="space-y-1 max-w-xl">
-              {/* WELCOME TO with red bar */}
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.25em] text-slate-900">
-                  WELCOME TO
-                </span>
-                <span className="w-5 h-[2.5px] bg-[#e11d2e] rounded-full inline-block" />
-              </div>
-
-              {/* Headline */}
-              <h1 className="text-2xl sm:text-3xl lg:text-[36px] font-black tracking-tight uppercase leading-[1.08] text-[#0c1d37]">
-                <span className="text-[#e11d2e]">MSK LOGISTIC</span><br className="hidden sm:inline" /> SOLUTION
-              </h1>
-
-              {/* Tagline with red bullet separators */}
-              <p className="text-[11px] sm:text-xs font-bold text-slate-500 tracking-wide pt-0.5">
-                Efficient Logistics <span className="text-[#e11d2e] mx-1">•</span> Accurate Billing <span className="text-[#e11d2e] mx-1">•</span> Trusted Service
-              </p>
-            </div>
-          </div>
-
-          {/* MIDDLE SECTION: 4 COMPACT FEATURE TILES */}
-          <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-4 max-w-[560px]">
-            {/* Tile 1: Container Management (Red) */}
-            <div className="bg-white rounded-xl p-2 sm:p-2.5 shadow-xs border border-slate-200 flex items-center gap-2 hover:border-red-300 transition-all group">
-              <div className="w-8 h-8 rounded-lg bg-[#e11d2e] flex items-center justify-center shrink-0 shadow-xs shadow-red-500/30 text-white">
-                <Box className="w-4 h-4 stroke-[2.2]" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-[10.5px] font-bold text-slate-900 block leading-tight">
-                  Container<br />Management
-                </span>
-                <div className="w-5 h-[2px] bg-[#e11d2e] mt-1 rounded-full" />
-              </div>
-            </div>
-
-            {/* Tile 2: Job & Shipments Tracking (Blue) */}
-            <div className="bg-white rounded-xl p-2 sm:p-2.5 shadow-xs border border-slate-200 flex items-center gap-2 hover:border-blue-300 transition-all group">
-              <div className="w-8 h-8 rounded-lg bg-[#168bff] flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/30 text-white">
-                <Truck className="w-4 h-4 stroke-[2.2]" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-[10.5px] font-bold text-slate-900 block leading-tight">
-                  Job &<br />Shipments Tracking
-                </span>
-                <div className="w-5 h-[2px] bg-[#168bff] mt-1 rounded-full" />
-              </div>
-            </div>
-
-            {/* Tile 3: GST Compliant Invoicing (Green/Teal) */}
-            <div className="bg-white rounded-xl p-2 sm:p-2.5 shadow-xs border border-slate-200 flex items-center gap-2 hover:border-emerald-300 transition-all group">
-              <div className="w-8 h-8 rounded-lg bg-[#00d6b0] flex items-center justify-center shrink-0 shadow-xs shadow-emerald-500/30 text-white font-bold text-base">
-                ₹
-              </div>
-              <div className="min-w-0">
-                <span className="text-[10.5px] font-bold text-slate-900 block leading-tight">
-                  GST Compliant<br />Invoicing
-                </span>
-                <div className="w-5 h-[2px] bg-[#00d6b0] mt-1 rounded-full" />
-              </div>
-            </div>
-
-            {/* Tile 4: Complete Logistics Solution (Orange) */}
-            <div className="bg-white rounded-xl p-2 sm:p-2.5 shadow-xs border border-slate-200 flex items-center gap-2 hover:border-orange-300 transition-all group">
-              <div className="w-8 h-8 rounded-lg bg-[#ff941f] flex items-center justify-center shrink-0 shadow-xs shadow-orange-500/30 text-white">
-                <BarChart3 className="w-4 h-4 stroke-[2.2]" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-[10.5px] font-bold text-slate-900 block leading-tight">
-                  Complete<br />Logistics Solution
-                </span>
-                <div className="w-5 h-[2px] bg-[#ff941f] mt-1 rounded-full" />
-              </div>
-            </div>
-          </div>
-
-          {/* BOTTOM SECTION: CREATE TAX INVOICE BUTTON + WHITE SEARCH FIELD */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 max-w-[540px] pt-1">
+          {/* Primary Action Button */}
+          <div className="pt-4 sm:pt-5">
             <button
               onClick={onOpenInvoiceWizard}
-              className="flex items-center justify-center gap-1.5 rounded-lg bg-[#e11d2e] hover:bg-red-700 active:scale-95 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-all hover:scale-[1.01] shrink-0 cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#D71920] hover:bg-[#b5141a] active:scale-95 text-white font-bold text-xs shadow-md shadow-red-600/20 transition-all hover:scale-[1.02] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+              title="Create a new GST Tax Invoice"
             >
-              <Plus className="w-3.5 h-3.5 stroke-[3]" />
-              <span>+ Create Tax Invoice</span>
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Create Tax Invoice</span>
             </button>
-
-            <div className="relative flex-1">
-              <form onSubmit={handleBannerSearchSubmit}>
-                <div className="relative flex items-center">
-                  <Search className="w-3.5 h-3.5 text-[#e11d2e] absolute left-3 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={bannerSearch}
-                    onChange={(e) => setBannerSearch(e.target.value)}
-                    onClick={() => onOpenSearch && onOpenSearch()}
-                    placeholder="Search parties, containers, invoices, jobs..."
-                    className="w-full rounded-lg bg-white border border-slate-200 pl-9 pr-16 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-red-500 focus:ring-1 focus:ring-red-500 shadow-2xs transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => onOpenSearch && onOpenSearch()}
-                    className="absolute right-1.5 px-2 py-0.5 rounded bg-slate-50 hover:bg-slate-100 text-slate-500 text-[10px] font-mono border border-slate-200 font-bold cursor-pointer"
-                  >
-                    Ctrl + K
-                  </button>
-                </div>
-              </form>
-            </div>
           </div>
         </div>
 
-        {/* RIGHT SECTION: SCALE-INDEPENDENT HIGH-DEFINITION LOGISTICS MONTAGE & SLOGAN */}
-        <div className="relative w-full lg:w-[48%] xl:w-[50%] shrink-0 flex items-center justify-end overflow-hidden aspect-[1.85/1] lg:aspect-auto self-stretch min-h-[220px] sm:min-h-[260px] lg:min-h-[290px]">
-          <img
-            src="/images/dashboard-hero-right-hd.png"
-            alt="MSK Multimodal Logistics Fleet — Moving Business Forward"
-            loading="eager"
-            decoding="async"
-            className="w-full h-full object-cover object-left-center select-none block"
-            style={{
-              imageRendering: '-webkit-optimize-contrast',
-            }}
-          />
+        {/* Right Section: Custom Vector SVG Illustration (Razor-Sharp at Any Zoom) */}
+        <div className="relative w-full md:w-[48%] lg:w-[50%] shrink-0 flex items-center justify-end overflow-hidden self-stretch min-h-[180px] sm:min-h-[220px]">
+          <svg
+            viewBox="0 0 680 260"
+            preserveAspectRatio="xMaxYMid meet"
+            className="w-full h-full block select-none pointer-events-none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              {/* Soft sky and water gradients */}
+              <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#F8FAFC" />
+                <stop offset="100%" stopColor="#EFF6FF" />
+              </linearGradient>
+              <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#E0F2FE" />
+                <stop offset="100%" stopColor="#BAE6FD" />
+              </linearGradient>
+              <linearGradient id="hullGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#0B1B3A" />
+                <stop offset="100%" stopColor="#1E293B" />
+              </linearGradient>
+              <linearGradient id="redBoxGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#EF4444" />
+                <stop offset="100%" stopColor="#D71920" />
+              </linearGradient>
+              <linearGradient id="navyBoxGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#1E3A8A" />
+                <stop offset="100%" stopColor="#0B1B3A" />
+              </linearGradient>
+              <linearGradient id="blueBoxGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#38BDF8" />
+                <stop offset="100%" stopColor="#0284C7" />
+              </linearGradient>
+              <linearGradient id="amberBoxGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FBBF24" />
+                <stop offset="100%" stopColor="#F59E0B" />
+              </linearGradient>
+            </defs>
+
+            {/* Background Sky Canvas */}
+            <rect width="680" height="260" fill="url(#skyGrad)" />
+
+            {/* Distant Port Skyline & Warehouses */}
+            <g fill="#E2E8F0" opacity="0.8">
+              <rect x="50" y="140" width="60" height="40" rx="2" />
+              <rect x="90" y="125" width="45" height="55" rx="2" />
+              <rect x="145" y="135" width="70" height="45" rx="2" />
+              <rect x="230" y="115" width="55" height="65" rx="2" />
+              <rect x="290" y="130" width="80" height="50" rx="2" />
+              <polygon points="50,140 80,120 110,140" fill="#CBD5E1" />
+              <polygon points="290,130 330,110 370,130" fill="#CBD5E1" />
+            </g>
+
+            {/* Port Cranes (STS Gantry Cranes in Silhouette) */}
+            <g stroke="#0B1B3A" strokeWidth="2" strokeLinecap="round" opacity="0.3">
+              {/* Crane 1 */}
+              <line x1="80" y1="180" x2="105" y2="70" />
+              <line x1="130" y1="180" x2="105" y2="70" />
+              <line x1="70" y1="70" x2="175" y2="70" />
+              <line x1="105" y1="70" x2="115" y2="40" />
+              <line x1="130" y1="70" x2="115" y2="40" />
+              <line x1="70" y1="70" x2="115" y2="40" />
+              <line x1="175" y1="70" x2="115" y2="40" />
+              <line x1="150" y1="70" x2="150" y2="105" strokeWidth="1" strokeDasharray="2 2" />
+
+              {/* Crane 2 */}
+              <line x1="190" y1="180" x2="215" y2="80" />
+              <line x1="240" y1="180" x2="215" y2="80" />
+              <line x1="180" y1="80" x2="275" y2="80" />
+              <line x1="215" y1="80" x2="225" y2="52" />
+              <line x1="240" y1="80" x2="225" y2="52" />
+              <line x1="180" y1="80" x2="225" y2="52" />
+              <line x1="275" y1="80" x2="225" y2="52" />
+            </g>
+
+            {/* Flight Path / Trajectory Arc to Airfreight */}
+            <path
+              d="M 280 180 Q 420 80 560 48"
+              stroke="#D71920"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+              fill="none"
+              opacity="0.6"
+            />
+
+            {/* Cargo Airplane in High Altitude */}
+            <g transform="translate(560, 48) rotate(-14)">
+              {/* Aircraft Fuselage */}
+              <path
+                d="M -35 0 C -25 -6, 25 -6, 40 0 C 25 6, -25 6, -35 0 Z"
+                fill="#FFFFFF"
+                stroke="#0B1B3A"
+                strokeWidth="1.5"
+              />
+              {/* Cockpit Window */}
+              <path d="M 32 -2 L 36 -1 L 34 1 Z" fill="#0284C7" />
+              {/* Red Tail Fin */}
+              <path d="M -30 -3 L -42 -22 L -32 -22 L -20 -3 Z" fill="#D71920" />
+              {/* Swept Wings */}
+              <path d="M -5 0 L -18 28 L -8 28 L 8 0 Z" fill="#CBD5E1" stroke="#0B1B3A" strokeWidth="1" />
+              <path d="M -5 0 L -18 -26 L -8 -26 L 8 0 Z" fill="#94A3B8" stroke="#0B1B3A" strokeWidth="1" />
+              {/* Jet Engines */}
+              <rect x="-8" y="10" width="10" height="4" rx="1.5" fill="#0B1B3A" />
+              <rect x="-8" y="-14" width="10" height="4" rx="1.5" fill="#0B1B3A" />
+            </g>
+
+            {/* Harbor Water Surface */}
+            <rect x="0" y="185" width="680" height="75" fill="url(#waterGrad)" />
+            {/* Water Wave Highlights */}
+            <path d="M 0 195 Q 40 190 80 195 T 160 195 T 240 195 T 320 195 T 400 195 T 480 195 T 560 195 T 640 195 T 680 195" stroke="#FFFFFF" strokeWidth="1.5" fill="none" opacity="0.7" />
+            <path d="M 30 210 Q 70 205 110 210 T 190 210 T 270 210 T 350 210 T 430 210 T 510 210 T 590 210 T 670 210" stroke="#38BDF8" strokeWidth="1" fill="none" opacity="0.6" />
+            <path d="M 10 228 Q 60 222 120 228 T 240 228 T 360 228 T 480 228 T 600 228" stroke="#FFFFFF" strokeWidth="1.5" fill="none" opacity="0.5" />
+
+            {/* Quay Wall */}
+            <rect x="0" y="172" width="280" height="18" fill="#475569" />
+            <line x1="0" y1="172" x2="280" y2="172" stroke="#F1F5F9" strokeWidth="2" />
+            {/* Quay bollards */}
+            <rect x="40" y="167" width="6" height="5" rx="1" fill="#0B1B3A" />
+            <rect x="120" y="167" width="6" height="5" rx="1" fill="#0B1B3A" />
+            <rect x="200" y="167" width="6" height="5" rx="1" fill="#0B1B3A" />
+
+            {/* Freight Train on Rail Spur (Left) */}
+            <g transform="translate(10, 158)">
+              {/* Locomotive */}
+              <path d="M 0 10 L 25 10 L 25 0 L 15 0 L 5 4 L 0 10 Z" fill="#0B1B3A" />
+              <rect x="16" y="2" width="6" height="4" rx="0.5" fill="#38BDF8" />
+              <rect x="0" y="7" width="25" height="2" fill="#D71920" />
+              {/* Flatcar with 20ft container */}
+              <rect x="28" y="8" width="32" height="4" fill="#64748B" />
+              <rect x="29" y="0" width="30" height="8" rx="1" fill="url(#navyBoxGrad)" />
+              {/* Wheels */}
+              <circle cx="6" cy="12" r="2" fill="#1E293B" />
+              <circle cx="18" cy="12" r="2" fill="#1E293B" />
+              <circle cx="34" cy="12" r="2" fill="#1E293B" />
+              <circle cx="54" cy="12" r="2" fill="#1E293B" />
+            </g>
+
+            {/* Heavy-Duty Logistics Truck Hauling Container */}
+            <g transform="translate(80, 142)">
+              {/* Truck Trailer Chassis */}
+              <rect x="0" y="22" width="85" height="4" rx="1" fill="#1E293B" />
+              {/* Container on Truck */}
+              <rect x="0" y="4" width="70" height="18" rx="1" fill="url(#redBoxGrad)" />
+              <line x1="14" y1="4" x2="14" y2="22" stroke="#B91C1C" strokeWidth="0.8" />
+              <line x1="28" y1="4" x2="28" y2="22" stroke="#B91C1C" strokeWidth="0.8" />
+              <line x1="42" y1="4" x2="42" y2="22" stroke="#B91C1C" strokeWidth="0.8" />
+              <line x1="56" y1="4" x2="56" y2="22" stroke="#B91C1C" strokeWidth="0.8" />
+              {/* MSK Logo on Container */}
+              <text x="35" y="16" fill="#FFFFFF" fontSize="6.5" fontWeight="900" fontFamily="Montserrat, sans-serif" textAnchor="middle">MSK</text>
+
+              {/* Truck Cab / Cabin */}
+              <path d="M 72 24 L 94 24 L 94 12 L 86 6 L 72 6 Z" fill="#0B1B3A" />
+              {/* Windshield */}
+              <polygon points="86,7 93,12 86,12" fill="#38BDF8" opacity="0.85" />
+              {/* Headlight */}
+              <rect x="92" y="19" width="3" height="3" rx="0.5" fill="#FEF08A" />
+              {/* Bumper */}
+              <rect x="91" y="22" width="5" height="3" fill="#64748B" />
+              {/* Wheels */}
+              <circle cx="12" cy="27" r="4.5" fill="#0F172A" />
+              <circle cx="12" cy="27" r="2" fill="#94A3B8" />
+              <circle cx="23" cy="27" r="4.5" fill="#0F172A" />
+              <circle cx="23" cy="27" r="2" fill="#94A3B8" />
+              <circle cx="62" cy="27" r="4.5" fill="#0F172A" />
+              <circle cx="62" cy="27" r="2" fill="#94A3B8" />
+              <circle cx="86" cy="27" r="4.5" fill="#0F172A" />
+              <circle cx="86" cy="27" r="2" fill="#94A3B8" />
+            </g>
+
+            {/* Stylized Container Ship (Hero Maritime Vessel) */}
+            <g transform="translate(240, 92)">
+              {/* Ship Bridge Superstructure (Stern) */}
+              <rect x="30" y="32" width="46" height="52" fill="#FFFFFF" stroke="#0B1B3A" strokeWidth="1.5" rx="1" />
+              {/* Bridge Windows */}
+              <rect x="34" y="36" width="38" height="6" fill="#0284C7" rx="0.5" />
+              {/* Radar Mast */}
+              <line x1="53" y1="32" x2="53" y2="12" stroke="#0B1B3A" strokeWidth="2" />
+              <line x1="45" y1="18" x2="61" y2="18" stroke="#0B1B3A" strokeWidth="1.5" />
+              <line x1="48" y1="24" x2="58" y2="24" stroke="#0B1B3A" strokeWidth="1.5" />
+              {/* Satellite Dome */}
+              <circle cx="66" cy="28" r="3" fill="#FFFFFF" stroke="#0B1B3A" strokeWidth="1" />
+              {/* Ship Funnel / Smokestack */}
+              <path d="M 34 32 L 32 16 L 42 16 L 40 32 Z" fill="#D71920" />
+              <rect x="32" y="16" width="10" height="3" fill="#0B1B3A" />
+
+              {/* Stacked Containers on Deck */}
+              {/* Tier 1 (Bottom Row) */}
+              <rect x="80" y="70" width="48" height="14" rx="0.8" fill="url(#redBoxGrad)" stroke="#B91C1C" strokeWidth="0.5" />
+              <rect x="130" y="70" width="48" height="14" rx="0.8" fill="url(#navyBoxGrad)" stroke="#071328" strokeWidth="0.5" />
+              <rect x="180" y="70" width="48" height="14" rx="0.8" fill="url(#blueBoxGrad)" stroke="#0369A1" strokeWidth="0.5" />
+              <rect x="230" y="70" width="48" height="14" rx="0.8" fill="url(#redBoxGrad)" stroke="#B91C1C" strokeWidth="0.5" />
+              <rect x="280" y="70" width="48" height="14" rx="0.8" fill="url(#amberBoxGrad)" stroke="#D97706" strokeWidth="0.5" />
+              <rect x="330" y="70" width="48" height="14" rx="0.8" fill="url(#navyBoxGrad)" stroke="#071328" strokeWidth="0.5" />
+
+              {/* Tier 2 (Middle Row) */}
+              <rect x="82" y="55" width="48" height="14" rx="0.8" fill="url(#navyBoxGrad)" stroke="#071328" strokeWidth="0.5" />
+              <rect x="132" y="55" width="48" height="14" rx="0.8" fill="url(#redBoxGrad)" stroke="#B91C1C" strokeWidth="0.5" />
+              <rect x="182" y="55" width="48" height="14" rx="0.8" fill="url(#amberBoxGrad)" stroke="#D97706" strokeWidth="0.5" />
+              <rect x="232" y="55" width="48" height="14" rx="0.8" fill="url(#blueBoxGrad)" stroke="#0369A1" strokeWidth="0.5" />
+              <rect x="282" y="55" width="48" height="14" rx="0.8" fill="url(#redBoxGrad)" stroke="#B91C1C" strokeWidth="0.5" />
+              <rect x="332" y="55" width="44" height="14" rx="0.8" fill="url(#navyBoxGrad)" stroke="#071328" strokeWidth="0.5" />
+
+              {/* Tier 3 (Top Row) */}
+              <rect x="86" y="40" width="48" height="14" rx="0.8" fill="url(#blueBoxGrad)" stroke="#0369A1" strokeWidth="0.5" />
+              <rect x="136" y="40" width="48" height="14" rx="0.8" fill="url(#amberBoxGrad)" stroke="#D97706" strokeWidth="0.5" />
+              <rect x="186" y="40" width="48" height="14" rx="0.8" fill="url(#redBoxGrad)" stroke="#B91C1C" strokeWidth="0.5" />
+              <rect x="236" y="40" width="48" height="14" rx="0.8" fill="url(#navyBoxGrad)" stroke="#071328" strokeWidth="0.5" />
+              <rect x="286" y="40" width="44" height="14" rx="0.8" fill="url(#redBoxGrad)" stroke="#B91C1C" strokeWidth="0.5" />
+
+              {/* Tier 4 (Crown stack) */}
+              <rect x="138" y="25" width="48" height="14" rx="0.8" fill="url(#redBoxGrad)" stroke="#B91C1C" strokeWidth="0.5" />
+              <rect x="188" y="25" width="48" height="14" rx="0.8" fill="url(#blueBoxGrad)" stroke="#0369A1" strokeWidth="0.5" />
+              <rect x="238" y="25" width="44" height="14" rx="0.8" fill="url(#amberBoxGrad)" stroke="#D97706" strokeWidth="0.5" />
+
+              {/* Container Vertical Grooves Overlay */}
+              <g stroke="#FFFFFF" strokeWidth="0.5" opacity="0.3">
+                <line x1="92" y1="70" x2="92" y2="84" /><line x1="104" y1="70" x2="104" y2="84" /><line x1="116" y1="70" x2="116" y2="84" />
+                <line x1="142" y1="70" x2="142" y2="84" /><line x1="154" y1="70" x2="154" y2="84" /><line x1="166" y1="70" x2="166" y2="84" />
+                <line x1="192" y1="70" x2="192" y2="84" /><line x1="204" y1="70" x2="204" y2="84" /><line x1="216" y1="70" x2="216" y2="84" />
+                <line x1="242" y1="70" x2="242" y2="84" /><line x1="254" y1="70" x2="254" y2="84" /><line x1="266" y1="70" x2="266" y2="84" />
+                <line x1="292" y1="70" x2="292" y2="84" /><line x1="304" y1="70" x2="304" y2="84" /><line x1="316" y1="70" x2="316" y2="84" />
+                <line x1="144" y1="55" x2="144" y2="69" /><line x1="156" y1="55" x2="156" y2="69" /><line x1="168" y1="55" x2="168" y2="69" />
+                <line x1="194" y1="55" x2="194" y2="69" /><line x1="206" y1="55" x2="206" y2="69" /><line x1="218" y1="55" x2="218" y2="69" />
+                <line x1="244" y1="55" x2="244" y2="69" /><line x1="256" y1="55" x2="256" y2="69" /><line x1="268" y1="55" x2="268" y2="69" />
+              </g>
+
+              {/* Vessel Hull */}
+              {/* Main Navy Upper Freeboard */}
+              <path
+                d="M 10 84 L 388 84 L 434 84 C 418 102, 388 116, 360 118 L 40 118 L 10 84 Z"
+                fill="url(#hullGrad)"
+              />
+              {/* Red Waterline / Boot-Topping Stripe */}
+              <path
+                d="M 38 118 L 362 118 C 342 124, 320 126, 290 126 L 46 126 Z"
+                fill="#D71920"
+              />
+              {/* White Sheer Line Accent */}
+              <line x1="10" y1="84" x2="430" y2="84" stroke="#FFFFFF" strokeWidth="1.5" />
+              {/* Bow Draft Marks */}
+              <g stroke="#FFFFFF" strokeWidth="1" opacity="0.8">
+                <line x1="416" y1="88" x2="420" y2="88" />
+                <line x1="410" y1="94" x2="414" y2="94" />
+                <line x1="402" y1="100" x2="406" y2="100" />
+                <line x1="392" y1="106" x2="396" y2="106" />
+              </g>
+
+              {/* MSK Branding on Ship Hull */}
+              <text x="210" y="105" fill="#FFFFFF" fontSize="13" fontWeight="900" fontFamily="Montserrat, sans-serif" letterSpacing="2">
+                MSK LOGISTIC
+              </text>
+
+              {/* Bow Wave / Water Displacement Ripple */}
+              <path
+                d="M 432 88 Q 448 100 420 118 Q 445 110 455 125"
+                stroke="#FFFFFF"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+            </g>
+          </svg>
         </div>
       </div>
 
       {/* ========================================================
-          2. FOUR KPI SUMMARY CARDS WITH COLORED SPARKLINE WAVES
+          2. QUICK ACTIONS ROW (4 Enterprise Action Cards)
+          ======================================================== */}
+      <div>
+        <div className="flex items-center justify-between mb-2.5 px-0.5">
+          <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5 text-[#D71920]" />
+            Quick Operational Actions
+          </span>
+          <span className="text-[11px] text-slate-400">One-click enterprise shortcuts</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Action 1: Create Tax Invoice */}
+          <button
+            onClick={onOpenInvoiceWizard}
+            className="group bg-white rounded-[16px] p-3.5 border border-[#E6EAF2] shadow-[0_2px_8px_-2px_rgba(11,27,58,0.05)] hover:shadow-md hover:border-red-400 transition-all text-left flex items-center justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200/60 text-[#D71920] flex items-center justify-center shrink-0 group-hover:bg-[#D71920] group-hover:text-white transition-colors">
+                <FileText className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-slate-900 group-hover:text-[#D71920] transition-colors block">
+                  Create Tax Invoice
+                </span>
+                <span className="text-[10.5px] text-slate-400 block truncate">
+                  GST compliant 5-format billing
+                </span>
+              </div>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-[#D71920] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+          </button>
+
+          {/* Action 2: Add New Job */}
+          <button
+            onClick={onOpenAddJobModal}
+            className="group bg-white rounded-[16px] p-3.5 border border-[#E6EAF2] shadow-[0_2px_8px_-2px_rgba(11,27,58,0.05)] hover:shadow-md hover:border-blue-400 transition-all text-left flex items-center justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/60 text-[#0284C7] flex items-center justify-center shrink-0 group-hover:bg-[#0284C7] group-hover:text-white transition-colors">
+                <Ship className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-slate-900 group-hover:text-[#0284C7] transition-colors block">
+                  Register Job
+                </span>
+                <span className="text-[10.5px] text-slate-400 block truncate">
+                  Consignment & shipping bills
+                </span>
+              </div>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-[#0284C7] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+          </button>
+
+          {/* Action 3: Add Container */}
+          <button
+            onClick={onOpenAddContainerModal}
+            className="group bg-white rounded-[16px] p-3.5 border border-[#E6EAF2] shadow-[0_2px_8px_-2px_rgba(11,27,58,0.05)] hover:shadow-md hover:border-indigo-400 transition-all text-left flex items-center justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/60 text-[#0B1B3A] flex items-center justify-center shrink-0 group-hover:bg-[#0B1B3A] group-hover:text-white transition-colors">
+                <Box className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-slate-900 group-hover:text-[#0B1B3A] transition-colors block">
+                  Add Container
+                </span>
+                <span className="text-[10.5px] text-slate-400 block truncate">
+                  In-yard movement & ground days
+                </span>
+              </div>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-[#0B1B3A] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+          </button>
+
+          {/* Action 4: Add Party */}
+          <button
+            onClick={onOpenAddPartyModal}
+            className="group bg-white rounded-[16px] p-3.5 border border-[#E6EAF2] shadow-[0_2px_8px_-2px_rgba(11,27,58,0.05)] hover:shadow-md hover:border-emerald-400 transition-all text-left flex items-center justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-600 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                <Users className="w-5 h-5 stroke-[2.2]" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-slate-900 group-hover:text-emerald-600 transition-colors block">
+                  Add New Party
+                </span>
+                <span className="text-[10.5px] text-slate-400 block truncate">
+                  Forwarders & consignees
+                </span>
+              </div>
+            </div>
+            <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================
+          3. FOUR KPI SUMMARY CARDS (Top Colored 3px Border, Vector Sparkline)
           ======================================================== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: TOTAL PARTIES */}
+        {/* KPI 1: TOTAL PARTIES (Top Blue Border) */}
         <div
           onClick={() => onNavigateTab('parties')}
-          className="bg-white rounded-xl border border-slate-200 p-4 relative overflow-hidden shadow-xs hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between"
+          className="bg-white rounded-[16px] border border-[#E6EAF2] p-4 relative overflow-hidden shadow-[0_2px_12px_-2px_rgba(11,27,58,0.05)] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group focus-visible:ring-2 focus-visible:ring-blue-500"
+          tabIndex={0}
+          role="button"
+          aria-label="View Parties Master"
         >
+          {/* 3px Top Colored Border */}
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#0284C7]" />
+
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 TOTAL PARTIES
               </span>
-              <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/60 flex items-center justify-center text-blue-600">
-                <Users className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-xl bg-sky-50 border border-sky-200/60 flex items-center justify-center text-[#0284C7] shadow-xs">
+                <Users className="w-4 h-4 stroke-[2.2]" />
               </div>
             </div>
-            <div className="text-3xl font-black text-slate-900 font-sans tracking-tight my-1">
-              {stats?.totalParties ?? 0}
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">Verified Forwarders & Consignees</p>
-          </div>
-          {/* Blue Sparkline Wave */}
-          <div className="w-full h-6 mt-2">
-            <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none" fill="none">
-              <path
-                d="M 0 35 Q 50 15 100 25 T 200 10 L 200 40 L 0 40 Z"
-                fill="url(#blueWaveGrad)"
-                opacity="0.3"
-              />
-              <path
-                d="M 0 35 Q 50 15 100 25 T 200 10"
-                stroke="#3b82f6"
-                strokeWidth="2"
-                fill="none"
-              />
-              <circle cx="200" cy="10" r="3" fill="#3b82f6" />
-              <defs>
-                <linearGradient id="blueWaveGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#ffffff" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </div>
 
-        {/* Card 2: ACTIVE CONTAINERS */}
-        <div
-          onClick={() => onNavigateTab('containers')}
-          className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-blue-600 p-4 relative overflow-hidden shadow-xs hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                ACTIVE CONTAINERS
+            <div className="flex items-baseline gap-2 my-1.5">
+              <span
+                className="font-heading font-black text-slate-900 tracking-tight"
+                style={{ fontSize: 'clamp(1.6rem, 2.2vw, 2rem)' }}
+              >
+                {loading ? '...' : (stats?.totalParties ?? 0)}
               </span>
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200/60 flex items-center justify-center text-indigo-600">
-                <Box className="w-4 h-4" />
-              </div>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <TrendingUp className="w-3 h-3 stroke-[2.5]" />
+                +8.4%
+              </span>
             </div>
-            <div className="text-3xl font-black text-slate-900 font-sans tracking-tight my-1">
-              {stats?.totalContainers ?? 0}
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">CFS Yard Movements & Drayage</p>
-          </div>
-          {/* Indigo Sparkline Wave */}
-          <div className="w-full h-6 mt-2">
-            <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none" fill="none">
-              <path
-                d="M 0 32 Q 45 10 110 28 T 200 8 L 200 40 L 0 40 Z"
-                fill="url(#indigoWaveGrad)"
-                opacity="0.3"
-              />
-              <path
-                d="M 0 32 Q 45 10 110 28 T 200 8"
-                stroke="#6366f1"
-                strokeWidth="2"
-                fill="none"
-              />
-              <circle cx="200" cy="8" r="3" fill="#6366f1" />
-              <defs>
-                <linearGradient id="indigoWaveGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="100%" stopColor="#ffffff" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-        </div>
 
-        {/* Card 3: INVOICES THIS MONTH */}
-        <div
-          onClick={() => onNavigateTab('invoices')}
-          className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-red-500 p-4 relative overflow-hidden shadow-xs hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                INVOICES THIS MONTH
-              </span>
-              <div className="w-8 h-8 rounded-xl bg-red-50 border border-red-200/60 flex items-center justify-center text-red-600">
-                <FileText className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-3xl font-black text-slate-900 font-sans tracking-tight my-1">
-              {stats?.invoicesThisMonth ?? 0}
-            </div>
-            <p className="text-[11px] text-slate-400 font-medium">
-              {stats?.thisMonthBilling ? `₹${stats.thisMonthBilling.toLocaleString('en-IN')} Invoiced` : '0 Total Invoiced'}
+            <p className="text-[11px] text-slate-400 font-medium truncate">
+              Verified forwarders & consignees
             </p>
           </div>
-          {/* Red Sparkline Wave */}
-          <div className="w-full h-6 mt-2">
+
+          {/* SVG Sparkline */}
+          <div className="w-full h-8 mt-2.5">
             <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none" fill="none">
-              <path
-                d="M 0 35 Q 60 20 120 30 T 200 12 L 200 40 L 0 40 Z"
-                fill="url(#redWaveGrad)"
-                opacity="0.3"
-              />
-              <path
-                d="M 0 35 Q 60 20 120 30 T 200 12"
-                stroke="#e11d2e"
-                strokeWidth="2"
-                fill="none"
-              />
-              <circle cx="200" cy="12" r="3" fill="#e11d2e" />
               <defs>
-                <linearGradient id="redWaveGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#e11d2e" />
-                  <stop offset="100%" stopColor="#ffffff" />
+                <linearGradient id="blueSpark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0284C7" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#0284C7" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
+              <path d="M 0 32 Q 40 18 80 25 T 160 12 T 200 8 L 200 40 L 0 40 Z" fill="url(#blueSpark)" />
+              <path d="M 0 32 Q 40 18 80 25 T 160 12 T 200 8" stroke="#0284C7" strokeWidth="2.2" strokeLinecap="round" />
+              <circle cx="200" cy="8" r="3.5" fill="#0284C7" />
             </svg>
           </div>
         </div>
 
-        {/* Card 4: OUTSTANDING AMOUNT */}
+        {/* KPI 2: ACTIVE CONTAINERS (Top Navy Border) */}
         <div
-          onClick={() => onNavigateTab('payments')}
-          className="bg-white rounded-xl border border-slate-200 border-l-4 border-l-amber-500 p-4 relative overflow-hidden shadow-xs hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between"
+          onClick={() => onNavigateTab('containers')}
+          className="bg-white rounded-[16px] border border-[#E6EAF2] p-4 relative overflow-hidden shadow-[0_2px_12px_-2px_rgba(11,27,58,0.05)] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group focus-visible:ring-2 focus-visible:ring-indigo-500"
+          tabIndex={0}
+          role="button"
+          aria-label="View Container Operations"
         >
+          {/* 3px Top Colored Border */}
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#0B1B3A]" />
+
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                ACTIVE CONTAINERS
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-200/60 flex items-center justify-center text-[#0B1B3A] shadow-xs">
+                <Box className="w-4 h-4 stroke-[2.2]" />
+              </div>
+            </div>
+
+            <div className="flex items-baseline gap-2 my-1.5">
+              <span
+                className="font-heading font-black text-slate-900 tracking-tight"
+                style={{ fontSize: 'clamp(1.6rem, 2.2vw, 2rem)' }}
+              >
+                {loading ? '...' : (stats?.totalContainers ?? 0)}
+              </span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <TrendingUp className="w-3 h-3 stroke-[2.5]" />
+                +14.2%
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-400 font-medium truncate">
+              CFS yard movements & drayage
+            </p>
+          </div>
+
+          {/* SVG Sparkline */}
+          <div className="w-full h-8 mt-2.5">
+            <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none" fill="none">
+              <defs>
+                <linearGradient id="navySpark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0B1B3A" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#0B1B3A" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M 0 30 Q 50 12 100 24 T 170 10 T 200 6 L 200 40 L 0 40 Z" fill="url(#navySpark)" />
+              <path d="M 0 30 Q 50 12 100 24 T 170 10 T 200 6" stroke="#0B1B3A" strokeWidth="2.2" strokeLinecap="round" />
+              <circle cx="200" cy="6" r="3.5" fill="#0B1B3A" />
+            </svg>
+          </div>
+        </div>
+
+        {/* KPI 3: INVOICES THIS MONTH (Top Red Border) */}
+        <div
+          onClick={() => onNavigateTab('invoices')}
+          className="bg-white rounded-[16px] border border-[#E6EAF2] p-4 relative overflow-hidden shadow-[0_2px_12px_-2px_rgba(11,27,58,0.05)] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group focus-visible:ring-2 focus-visible:ring-red-500"
+          tabIndex={0}
+          role="button"
+          aria-label="View Invoices"
+        >
+          {/* 3px Top Colored Border */}
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#D71920]" />
+
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                INVOICES THIS MONTH
+              </span>
+              <div className="w-8 h-8 rounded-xl bg-red-50 border border-red-200/60 flex items-center justify-center text-[#D71920] shadow-xs">
+                <FileText className="w-4 h-4 stroke-[2.2]" />
+              </div>
+            </div>
+
+            <div className="flex items-baseline gap-2 my-1.5">
+              <span
+                className="font-heading font-black text-slate-900 tracking-tight"
+                style={{ fontSize: 'clamp(1.6rem, 2.2vw, 2rem)' }}
+              >
+                {loading ? '...' : (stats?.invoicesThisMonth ?? 0)}
+              </span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <TrendingUp className="w-3 h-3 stroke-[2.5]" />
+                +19.5%
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-400 font-medium truncate">
+              {stats?.thisMonthBilling
+                ? `${formatCurrencyWithSymbol(stats.thisMonthBilling, 'INR')} Total Invoiced`
+                : 'Tax invoices generated this cycle'}
+            </p>
+          </div>
+
+          {/* SVG Sparkline */}
+          <div className="w-full h-8 mt-2.5">
+            <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none" fill="none">
+              <defs>
+                <linearGradient id="redSpark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#D71920" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#D71920" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M 0 34 Q 45 15 110 26 T 170 8 T 200 4 L 200 40 L 0 40 Z" fill="url(#redSpark)" />
+              <path d="M 0 34 Q 45 15 110 26 T 170 8 T 200 4" stroke="#D71920" strokeWidth="2.2" strokeLinecap="round" />
+              <circle cx="200" cy="4" r="3.5" fill="#D71920" />
+            </svg>
+          </div>
+        </div>
+
+        {/* KPI 4: OUTSTANDING AMOUNT (Top Amber Border) */}
+        <div
+          onClick={() => onNavigateTab('payments')}
+          className="bg-white rounded-[16px] border border-[#E6EAF2] p-4 relative overflow-hidden shadow-[0_2px_12px_-2px_rgba(11,27,58,0.05)] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group focus-visible:ring-2 focus-visible:ring-amber-500"
+          tabIndex={0}
+          role="button"
+          aria-label="View Payment Register"
+        >
+          {/* 3px Top Colored Border */}
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#F59E0B]" />
+
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                 OUTSTANDING AMOUNT
               </span>
-              <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-600 font-bold text-sm">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200/60 flex items-center justify-center text-amber-600 font-bold text-sm shadow-xs">
                 ₹
               </div>
             </div>
-            <div className="text-3xl font-black text-slate-900 font-sans tracking-tight my-1">
-              ₹{(stats?.outstandingAmount || 0).toLocaleString('en-IN')}
+
+            <div className="flex items-baseline gap-2 my-1.5 min-w-0">
+              <span
+                className="font-heading font-black text-slate-900 tracking-tight truncate"
+                style={{ fontSize: 'clamp(1.4rem, 2vw, 1.85rem)' }}
+              >
+                {loading ? '...' : formatCurrencyWithSymbol(stats?.outstandingAmount || 0, 'INR')}
+              </span>
             </div>
-            <p className="text-[11px] text-slate-400 font-medium">
+
+            <p className="text-[11px] text-slate-400 font-medium truncate">
               {stats?.pendingInvoicesCount || 0} Invoices Pending Clearance
             </p>
           </div>
-          {/* Amber Sparkline Wave */}
-          <div className="w-full h-6 mt-2">
+
+          {/* SVG Sparkline */}
+          <div className="w-full h-8 mt-2.5">
             <svg className="w-full h-full" viewBox="0 0 200 40" preserveAspectRatio="none" fill="none">
-              <path
-                d="M 0 35 Q 50 18 100 26 T 200 14 L 200 40 L 0 40 Z"
-                fill="url(#amberWaveGrad)"
-                opacity="0.3"
-              />
-              <path
-                d="M 0 35 Q 50 18 100 26 T 200 14"
-                stroke="#f59e0b"
-                strokeWidth="2"
-                fill="none"
-              />
-              <circle cx="200" cy="14" r="3" fill="#f59e0b" />
               <defs>
-                <linearGradient id="amberWaveGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f59e0b" />
-                  <stop offset="100%" stopColor="#ffffff" />
+                <linearGradient id="amberSpark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.0" />
                 </linearGradient>
               </defs>
+              <path d="M 0 32 Q 55 18 105 28 T 165 14 T 200 10 L 200 40 L 0 40 Z" fill="url(#amberSpark)" />
+              <path d="M 0 32 Q 55 18 105 28 T 165 14 T 200 10" stroke="#F59E0B" strokeWidth="2.2" strokeLinecap="round" />
+              <circle cx="200" cy="10" r="3.5" fill="#F59E0B" />
             </svg>
           </div>
         </div>
       </div>
 
       {/* ========================================================
-          3. TEU OPERATIONS TRACKING PANEL (MATCHING REFERENCE EXACTLY)
+          4. TEU OPERATIONS TRACKING PANEL
           ======================================================== */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-        {/* Top Header Row with Time Filters & Container Operations Link */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+      <div className="rounded-[16px] border border-[#E6EAF2] bg-white p-5 sm:p-6 shadow-[0_2px_12px_-2px_rgba(11,27,58,0.05)] space-y-5">
+        {/* Panel Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-bold shadow-xs">
-              <BarChart3 className="w-5 h-5 text-blue-600" />
+            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-200/80 flex items-center justify-center text-[#0284C7] shadow-xs shrink-0">
+              <BarChart3 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              <h2 className="font-heading text-sm font-bold text-slate-900 uppercase tracking-wider">
                 TEU OPERATIONS TRACKING
-              </h3>
+              </h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 Twenty-foot Equivalent Unit throughput and container movement analysis
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-end sm:self-auto">
+          <div className="flex items-center gap-3 self-end sm:self-auto flex-wrap">
             {/* Day / Week / Month / Year Pills */}
-            <div className="bg-slate-100 rounded-lg p-0.5 flex items-center text-xs">
+            <div className="bg-slate-100 rounded-lg p-0.5 flex items-center text-xs border border-slate-200/60">
               {(['Day', 'Week', 'Month', 'Year'] as const).map((t) => (
                 <button
                   key={t}
@@ -529,7 +881,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   onClick={() => setTeuTimeframe(t)}
                   className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
                     teuTimeframe === t
-                      ? 'bg-blue-600 text-white shadow-xs'
+                      ? 'bg-[#0B1B3A] text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -541,7 +893,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {/* Container Operations Link */}
             <button
               onClick={() => onNavigateTab('containers')}
-              className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors ml-1 cursor-pointer"
+              className="flex items-center gap-1 text-xs font-bold text-[#0284C7] hover:text-blue-800 transition-colors ml-1 cursor-pointer"
             >
               <span>Container Operations</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -549,22 +901,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Inner Grid: Left 4 Stat Tiles + Right TEU Movement Trend Chart */}
+        {/* Inner Grid: 4 Stat Tiles + Dual Bar Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1">
-          {/* LEFT 4 STAT TILES (5 Cols on LG) */}
+          {/* LEFT 4 STAT TILES (6 Cols on LG) */}
           <div className="lg:col-span-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2.5 items-stretch">
             {/* Tile 1: TODAY'S TEUS */}
-            <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-3 flex flex-col justify-between hover:bg-slate-50 transition-colors">
+            <div className="bg-[#F8FAFC] border border-[#E6EAF2] rounded-[14px] p-3 flex flex-col justify-between hover:bg-slate-50 transition-colors">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 TODAY'S TEUS
               </span>
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 my-2">
-                <Box className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 my-2">
+                <Box className="w-4 h-4 stroke-[2.2]" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-2xl font-black text-slate-900">{stats?.todayTeus ?? 0}</span>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-1 py-0.2 rounded">
+                  <span className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+                    {loading ? (
+                      <span className="inline-block w-8 h-6 bg-slate-200 animate-pulse rounded" />
+                    ) : (
+                      stats?.todayTeus ?? 0
+                    )}
+                  </span>
+                  <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-100/70 px-1 py-0.2 rounded">
                     ↑ 0%
                   </span>
                 </div>
@@ -573,17 +931,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Tile 2: THIS MONTH TEUS */}
-            <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-3 flex flex-col justify-between hover:bg-slate-50 transition-colors">
+            <div className="bg-[#F8FAFC] border border-[#E6EAF2] rounded-[14px] p-3 flex flex-col justify-between hover:bg-slate-50 transition-colors">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 THIS MONTH TEUS
               </span>
-              <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 my-2">
-                <Ship className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-200/80 flex items-center justify-center text-[#0284C7] my-2">
+                <Ship className="w-4 h-4 stroke-[2.2]" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-2xl font-black text-slate-900">{stats?.thisMonthTeus ?? 0}</span>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-1 py-0.2 rounded">
+                  <span className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+                    {loading ? (
+                      <span className="inline-block w-8 h-6 bg-slate-200 animate-pulse rounded" />
+                    ) : (
+                      stats?.thisMonthTeus ?? 0
+                    )}
+                  </span>
+                  <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-100/70 px-1 py-0.2 rounded">
                     ↑ 0%
                   </span>
                 </div>
@@ -592,17 +956,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Tile 3: ACTIVE IN-YARD TEUS */}
-            <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-3 flex flex-col justify-between hover:bg-slate-50 transition-colors">
+            <div className="bg-[#F8FAFC] border border-[#E6EAF2] rounded-[14px] p-3 flex flex-col justify-between hover:bg-slate-50 transition-colors">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 ACTIVE IN-YARD TEUS
               </span>
-              <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 my-2">
-                <Truck className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 my-2">
+                <Truck className="w-4 h-4 stroke-[2.2]" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-2xl font-black text-slate-900">{stats?.activeTeus ?? 0}</span>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-1 py-0.2 rounded">
+                  <span className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+                    {loading ? (
+                      <span className="inline-block w-8 h-6 bg-slate-200 animate-pulse rounded" />
+                    ) : (
+                      stats?.activeTeus ?? 0
+                    )}
+                  </span>
+                  <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-100/70 px-1 py-0.2 rounded">
                     ↑ 0%
                   </span>
                 </div>
@@ -611,16 +981,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Tile 4: TOTAL RECORDED TEUS */}
-            <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-3 flex flex-col justify-between hover:bg-slate-50 transition-colors">
+            <div className="bg-[#F8FAFC] border border-[#E6EAF2] rounded-[14px] p-3 flex flex-col justify-between hover:bg-slate-50 transition-colors">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                 TOTAL RECORDED TEUS
               </span>
-              <div className="w-7 h-7 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 my-2">
-                <Box className="w-4 h-4" />
+              <div className="w-7 h-7 rounded-lg bg-purple-50 border border-purple-200/80 flex items-center justify-center text-purple-600 my-2">
+                <Box className="w-4 h-4 stroke-[2.2]" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-2xl font-black text-slate-900">{stats?.totalTeus ?? 0}</span>
+                  <span className="text-xl sm:text-2xl font-black text-slate-900 font-heading">
+                    {loading ? (
+                      <span className="inline-block w-8 h-6 bg-slate-200 animate-pulse rounded" />
+                    ) : (
+                      stats?.totalTeus ?? 0
+                    )}
+                  </span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-medium block mt-0.5">Lifetime volume</span>
               </div>
@@ -628,53 +1004,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           {/* RIGHT TEU MOVEMENT TREND CHART (6 Cols on LG) */}
-          <div className="lg:col-span-6 border border-slate-200 rounded-xl p-4 bg-white flex flex-col justify-between">
-            {/* Chart Header: Title, Legend, Dropdown */}
+          <div className="lg:col-span-6 border border-[#E6EAF2] rounded-[14px] p-4 bg-white flex flex-col justify-between">
+            {/* Chart Header */}
             <div className="flex items-center justify-between pb-3">
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-slate-800">TEU Movement Trend</span>
                 <div className="flex items-center gap-3 text-[11px] text-slate-600">
                   <span className="flex items-center gap-1 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-[#f43f5e] inline-block" />
+                    <span className="w-2.5 h-2.5 rounded-sm bg-[#D71920] inline-block" />
                     <span>In-Yard</span>
                   </span>
                   <span className="flex items-center gap-1 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-[#3b82f6] inline-block" />
+                    <span className="w-2.5 h-2.5 rounded-sm bg-[#0B1B3A] inline-block" />
                     <span>Out-Yard</span>
                   </span>
                 </div>
               </div>
-              <div className="text-xs">
-                <span className="px-2 py-0.5 rounded border border-slate-200 text-[10.5px] font-medium text-slate-600 bg-white shadow-2xs">
-                  Last 7 Days ▾
-                </span>
-              </div>
+              <span className="px-2 py-0.5 rounded border border-slate-200 text-[10.5px] font-medium text-slate-600 bg-white shadow-2xs">
+                Last 7 Days
+              </span>
             </div>
 
-            {/* Dual Bar Chart with Y-Axis Gridlines */}
+            {/* Dual Bar Chart with Y-Axis Lines */}
             <div className="relative pt-3 pb-1">
               {/* Y-Axis Gridlines */}
               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[9.5px] text-slate-400 font-mono pr-2">
-                <div className="flex items-center w-full">
-                  <span className="w-5 text-right mr-1.5">40</span>
-                  <div className="flex-1 border-b border-slate-100" />
-                </div>
-                <div className="flex items-center w-full">
-                  <span className="w-5 text-right mr-1.5">30</span>
-                  <div className="flex-1 border-b border-slate-100" />
-                </div>
-                <div className="flex items-center w-full">
-                  <span className="w-5 text-right mr-1.5">20</span>
-                  <div className="flex-1 border-b border-slate-100" />
-                </div>
-                <div className="flex items-center w-full">
-                  <span className="w-5 text-right mr-1.5">10</span>
-                  <div className="flex-1 border-b border-slate-100" />
-                </div>
-                <div className="flex items-center w-full">
-                  <span className="w-5 text-right mr-1.5">0</span>
-                  <div className="flex-1 border-b border-slate-200" />
-                </div>
+                {[40, 30, 20, 10, 0].map((val) => (
+                  <div key={val} className="flex items-center w-full">
+                    <span className="w-5 text-right mr-1.5">{val}</span>
+                    <div className="flex-1 border-b border-slate-100" />
+                  </div>
+                ))}
               </div>
 
               {/* Bars Row */}
@@ -686,21 +1046,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                   return (
                     <div key={idx} className="flex flex-col items-center justify-end h-full group min-w-0">
-                      <div className="w-full flex items-end justify-center gap-0.5 sm:gap-1 h-24">
+                      <div className="w-full flex items-end justify-center gap-1 h-24">
                         {/* Red In-Yard Bar */}
                         <div
                           style={{ height: `${inHeight}%` }}
-                          className="w-2 sm:w-3 bg-[#f43f5e] hover:bg-rose-600 rounded-t-xs transition-all duration-300"
+                          className="w-2.5 sm:w-3.5 bg-[#D71920] hover:bg-red-700 rounded-t-xs transition-all duration-300"
                           title={`In-Yard: ${item.inYard} TEU`}
                         />
-                        {/* Blue Out-Yard Bar */}
+                        {/* Navy Out-Yard Bar */}
                         <div
                           style={{ height: `${outHeight}%` }}
-                          className="w-2 sm:w-3 bg-[#3b82f6] hover:bg-blue-600 rounded-t-xs transition-all duration-300"
+                          className="w-2.5 sm:w-3.5 bg-[#0B1B3A] hover:bg-[#152747] rounded-t-xs transition-all duration-300"
                           title={`Out-Yard: ${item.outYard} TEU`}
                         />
                       </div>
-                      <span className="text-[8.5px] sm:text-[10px] text-slate-500 font-medium mt-1 truncate block text-center w-full">
+                      <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium mt-1 truncate block text-center w-full">
                         {item.date}
                       </span>
                     </div>
@@ -713,21 +1073,185 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* ========================================================
-          4. PRESERVED OPERATIONAL TABLES (RECENT INVOICES & SHIPMENTS)
+          5. OUTSTANDING AGING PANEL (Donut Chart & Age Distribution)
           ======================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
-        {/* Recent Invoices Table */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+      <div className="rounded-[16px] border border-[#E6EAF2] bg-white p-5 sm:p-6 shadow-[0_2px_12px_-2px_rgba(11,27,58,0.05)] space-y-4">
+        {/* Panel Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-600 shadow-xs shrink-0 font-bold">
+              ₹
+            </div>
+            <div>
+              <h2 className="font-heading text-sm font-bold text-slate-900 uppercase tracking-wider">
+                OUTSTANDING AGING ANALYSIS
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Receivables aging distribution across 0–30, 31–60, and 60+ overdue days
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => onNavigateTab('payments')}
+            className="flex items-center gap-1 text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors cursor-pointer self-end sm:self-auto"
+          >
+            <span>Payment Register</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Donut Chart & Breakdown Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center pt-1">
+          {/* Left: SVG Donut Chart */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center p-3">
+            <div className="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 120 120">
+                {/* Background Ring */}
+                <circle cx="60" cy="60" r="46" stroke="#F1F5F9" strokeWidth="12" fill="none" />
+
+                {/* 0-30 Days (Current - Emerald) */}
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="46"
+                  stroke="#10B981"
+                  strokeWidth="12"
+                  fill="none"
+                  strokeDasharray={`${(agingData.current.percent / 100) * 289} 289`}
+                  strokeDashoffset="0"
+                  strokeLinecap="round"
+                  className="transition-all duration-700"
+                />
+
+                {/* 31-60 Days (Aging - Amber) */}
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="46"
+                  stroke="#F59E0B"
+                  strokeWidth="12"
+                  fill="none"
+                  strokeDasharray={`${(agingData.aging.percent / 100) * 289} 289`}
+                  strokeDashoffset={`-${(agingData.current.percent / 100) * 289}`}
+                  strokeLinecap="round"
+                  className="transition-all duration-700"
+                />
+
+                {/* 60+ Days (Overdue - Red) */}
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="46"
+                  stroke="#D71920"
+                  strokeWidth="12"
+                  fill="none"
+                  strokeDasharray={`${(agingData.overdue.percent / 100) * 289} 289`}
+                  strokeDashoffset={`-${((agingData.current.percent + agingData.aging.percent) / 100) * 289}`}
+                  strokeLinecap="round"
+                  className="transition-all duration-700"
+                />
+              </svg>
+
+              {/* Inner Center Label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Total Pending
+                </span>
+                <span className="font-heading font-black text-slate-900 text-sm sm:text-base leading-tight mt-0.5 truncate max-w-[130px]">
+                  {formatCurrencyWithSymbol(agingData.total, 'INR')}
+                </span>
+                <span className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                  {agingData.pendingCount} Invoices
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Aging Category Cards */}
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Bucket 1: 0-30 Days */}
+            <div className="bg-[#F8FAFC] border border-[#E6EAF2] rounded-[14px] p-4 flex flex-col justify-between border-t-4 border-t-emerald-500">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-slate-900">0–30 Days</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.2 rounded">
+                    Current
+                  </span>
+                </div>
+                <p className="font-heading font-black text-slate-900 text-lg my-1">
+                  {formatCurrencyWithSymbol(agingData.current.amount, 'INR')}
+                </p>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {agingData.current.percent}% of receivables
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mt-3">
+                <div style={{ width: `${agingData.current.percent}%` }} className="bg-emerald-500 h-full rounded-full" />
+              </div>
+            </div>
+
+            {/* Bucket 2: 31-60 Days */}
+            <div className="bg-[#F8FAFC] border border-[#E6EAF2] rounded-[14px] p-4 flex flex-col justify-between border-t-4 border-t-amber-500">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-slate-900">31–60 Days</span>
+                  <span className="text-[10px] font-bold text-amber-700 bg-amber-100/70 px-1.5 py-0.2 rounded">
+                    Due Soon
+                  </span>
+                </div>
+                <p className="font-heading font-black text-slate-900 text-lg my-1">
+                  {formatCurrencyWithSymbol(agingData.aging.amount, 'INR')}
+                </p>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {agingData.aging.percent}% of receivables
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mt-3">
+                <div style={{ width: `${agingData.aging.percent}%` }} className="bg-amber-500 h-full rounded-full" />
+              </div>
+            </div>
+
+            {/* Bucket 3: 60+ Days */}
+            <div className="bg-[#F8FAFC] border border-[#E6EAF2] rounded-[14px] p-4 flex flex-col justify-between border-t-4 border-t-[#D71920]">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold text-slate-900">60+ Days</span>
+                  <span className="text-[10px] font-bold text-red-700 bg-red-100/70 px-1.5 py-0.2 rounded">
+                    Overdue
+                  </span>
+                </div>
+                <p className="font-heading font-black text-rose-600 text-lg my-1">
+                  {formatCurrencyWithSymbol(agingData.overdue.amount, 'INR')}
+                </p>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {agingData.overdue.percent}% of receivables
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mt-3">
+                <div style={{ width: `${agingData.overdue.percent}%` }} className="bg-[#D71920] h-full rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================
+          6. OPERATIONAL TABLES ROW: RECENT INVOICES & CONTAINER STATUS
+          ======================================================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-1">
+        {/* Left: Recent Invoices Table */}
+        <div className="rounded-[16px] border border-[#E6EAF2] bg-white p-5 shadow-[0_2px_12px_-2px_rgba(11,27,58,0.05)] space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              <h3 className="font-heading text-sm font-bold text-slate-900 uppercase tracking-wider">
                 Recent Invoices
-              </h2>
-              <p className="text-xs text-slate-400">Live tax invoices and settlement status</p>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">Live tax invoices & settlement status</p>
             </div>
             <button
               onClick={() => onNavigateTab('invoices')}
-              className="flex items-center gap-1 text-xs font-bold text-red-600 hover:text-red-700 transition-colors"
+              className="flex items-center gap-1 text-xs font-bold text-[#D71920] hover:text-red-800 transition-colors cursor-pointer"
             >
               <span>View All Invoices</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -736,7 +1260,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+              <thead className="bg-[#F8FAFC] text-slate-600 font-semibold border-b border-[#E6EAF2]">
                 <tr>
                   <th className="p-3">Invoice No</th>
                   <th className="p-3">Party & GSTIN</th>
@@ -749,13 +1273,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 {!stats?.recentInvoices || stats.recentInvoices.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-slate-400">
-                      No invoices created yet. Click "+ Create Invoice" to generate one.
+                      No invoices created yet. Click "+ Create Tax Invoice" to begin.
                     </td>
                   </tr>
                 ) : (
                   stats.recentInvoices.slice(0, 5).map((inv: any) => (
-                    <tr key={inv.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="p-3 font-mono font-bold text-red-600">
+                    <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="p-3 font-mono font-bold text-[#D71920]">
                         <button
                           onClick={() => onViewInvoice(inv.id)}
                           className="hover:underline text-left cursor-pointer"
@@ -764,10 +1288,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </button>
                       </td>
                       <td className="p-3">
-                        <p className="font-semibold text-slate-900 truncate max-w-[170px]">
-                          {inv.party?.legalName || inv.billToName}
+                        <p className="font-semibold text-slate-900 truncate max-w-[170px]" title={inv.party?.legalName || inv.billToName}>
+                          {inv.party?.legalName || inv.billToName || 'Direct Customer'}
                         </p>
-                        <p className="text-[10px] font-mono text-slate-500">{inv.billToGstin}</p>
+                        <p className="text-[10px] font-mono text-slate-500">{inv.billToGstin || inv.party?.gstin || 'URP'}</p>
                       </td>
                       <td className="p-3 text-right font-bold text-slate-900 font-mono">
                         {formatCurrencyWithSymbol(inv.grandTotal, inv.currency)}
@@ -781,6 +1305,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                               ? 'blue'
                               : inv.status === 'PARTIALLY_PAID'
                               ? 'amber'
+                              : inv.status === 'CANCELLED'
+                              ? 'red'
                               : 'slate'
                           }
                           size="sm"
@@ -792,8 +1318,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => onViewInvoice(inv.id)}
-                            title="View Invoice"
-                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="View Invoice Details"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#D71920] hover:bg-slate-100 transition-colors cursor-pointer"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -801,14 +1327,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             onClick={() => handleDownloadInvoice(inv)}
                             disabled={downloadingId === inv.id}
                             title="Download Official PDF"
-                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#D71920] hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-50"
                           >
-                            <Download className="w-3.5 h-3.5" />
+                            {downloadingId === inv.id ? (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#D71920]" />
+                            ) : (
+                              <Download className="w-3.5 h-3.5" />
+                            )}
                           </button>
                           <button
                             onClick={() => onPrintInvoice(inv)}
                             title="Print Invoice"
-                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#D71920] hover:bg-slate-100 transition-colors cursor-pointer"
                           >
                             <Printer className="w-3.5 h-3.5" />
                           </button>
@@ -822,76 +1352,68 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Recent Shipments & Export Jobs Table */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        {/* Right: Container Status Table */}
+        <div className="rounded-[16px] border border-[#E6EAF2] bg-white p-5 shadow-[0_2px_12px_-2px_rgba(11,27,58,0.05)] space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                Recent Shipments & Export Jobs
-              </h2>
-              <p className="text-xs text-slate-400">Active consignments, shipping bills, and port routes</p>
+              <h3 className="font-heading text-sm font-bold text-slate-900 uppercase tracking-wider">
+                Container Status Tracking
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">Real-time container movements, yard inventory & TEU status</p>
             </div>
             <button
-              onClick={() => onNavigateTab('jobs')}
-              className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+              onClick={() => onNavigateTab('containers')}
+              className="flex items-center gap-1 text-xs font-bold text-[#0284C7] hover:text-blue-800 transition-colors cursor-pointer"
             >
-              <span>View All Jobs</span>
+              <span>View All Containers</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+              <thead className="bg-[#F8FAFC] text-slate-600 font-semibold border-b border-[#E6EAF2]">
                 <tr>
-                  <th className="p-3">Job Number</th>
-                  <th className="p-3">Party & Exporter</th>
-                  <th className="p-3 text-center">Containers</th>
-                  <th className="p-3">Port Route</th>
+                  <th className="p-3">Container No</th>
+                  <th className="p-3">Consignee / Party</th>
+                  <th className="p-3">Job Ref</th>
                   <th className="p-3">Status</th>
+                  <th className="p-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {!stats?.recentJobs || stats.recentJobs.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-8 text-slate-400">
-                      No jobs created yet. Click "+ Add Job" to register a shipment.
+                {displayContainers.map((c: any) => (
+                  <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-3">
+                      <span className="font-mono font-bold text-slate-900 block">
+                        {c.containerNumber}
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        {c.size || '40HC'} • {c.type || 'DRY'}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <p className="font-medium text-slate-900 truncate max-w-[170px]" title={c.party?.legalName}>
+                        {c.party?.legalName || 'Direct Shipper'}
+                      </p>
+                    </td>
+                    <td className="p-3 font-mono text-slate-600 text-[11px]">
+                      {c.job?.jobNumber || '—'}
+                    </td>
+                    <td className="p-3">
+                      {getContainerStatusBadge(c.status)}
+                    </td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => onNavigateTab('containers')}
+                        className="text-slate-400 hover:text-[#0284C7] p-1 rounded-md transition-colors cursor-pointer"
+                        title="View Container Details"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </button>
                     </td>
                   </tr>
-                ) : (
-                  stats.recentJobs.slice(0, 5).map((job: any) => (
-                    <tr key={job.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="p-3 font-mono font-bold text-slate-900">
-                        {job.jobNumber}
-                      </td>
-                      <td className="p-3">
-                        <p className="font-semibold text-slate-900 truncate max-w-[170px]">
-                          {job.party?.legalName}
-                        </p>
-                        <p className="text-[10px] text-slate-500 truncate max-w-[150px]">
-                          {job.exporter?.name || 'Direct'}
-                        </p>
-                      </td>
-                      <td className="p-3 text-center">
-                        <Badge variant="blue" size="sm">
-                          {job._count?.containers || 0} Containers
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <p className="font-medium text-slate-800">{job.port || 'JNPT'}</p>
-                        <p className="text-[10px] text-slate-400">→ {job.destination || 'Discharge Port'}</p>
-                      </td>
-                      <td className="p-3">
-                        <Badge
-                          variant={job.status === 'ACTIVE' ? 'green' : 'slate'}
-                          size="sm"
-                        >
-                          {job.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>

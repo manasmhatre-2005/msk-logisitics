@@ -86,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Drawer: Fixed & Slide-In on Mobile/Tablet (< 1024px), Static Expanded on Desktop (>= 1024px) */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-[270px] max-w-[85vw] bg-[#071328] text-white border-r border-[#15233c] flex flex-col h-screen select-none shrink-0 transition-transform duration-300 ease-in-out overflow-hidden shadow-2xl lg:shadow-none ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-[270px] max-w-[85vw] bg-[#0B1B3A] text-white border-r border-[#152747] flex flex-col h-screen select-none shrink-0 transition-transform duration-300 ease-in-out overflow-hidden shadow-2xl lg:shadow-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
         aria-label="Sidebar Navigation"
@@ -184,8 +184,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               className={`w-full group flex items-center justify-between px-3.5 py-3 min-h-[44px] rounded-xl text-[12.5px] transition-all duration-150 cursor-pointer ${
                 isActive
-                  ? 'bg-[#e11d2e] text-white font-bold shadow-md shadow-red-950/40'
-                  : 'text-slate-300 hover:text-white hover:bg-[#10203a] font-medium'
+                  ? 'bg-[#D71920] text-white font-bold shadow-md shadow-red-950/40'
+                  : 'text-slate-300 hover:text-white hover:bg-[#152747] font-medium'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
@@ -211,7 +211,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* User Status Footer with initials 'MS', Name, Online dot, and Role */}
-      <div className="relative z-10 p-3.5 border-t border-[#15233c] bg-[#071328]/95 backdrop-blur-md">
+      <div className="relative z-10 p-3.5 border-t border-[#152747] bg-[#0B1B3A]/95 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div className="w-9 h-9 rounded-full bg-[#3f0c11] border border-red-900/50 text-white flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-xs tracking-wider">

@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.search.includes('preview=dashboard')) {
+        if (typeof window !== 'undefined' && window.location.search.includes('preview=dashboard')) {
           setUser({
             id: 'admin-preview-id',
             name: 'MSK System Administrator',
