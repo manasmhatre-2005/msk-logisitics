@@ -9,7 +9,14 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// In-memory cache for static assets to eliminate redundant disk reads across PDF generations
+const assetPathCache = new Map<string, string | null>();
+const assetBufferCache = new Map<string, Buffer | null>();
+
 function getAssetPath(filename: string): string | null {
+  if (assetPathCache.has(filename)) {
+    return assetPathCache.get(filename)!;
+  }
   const candidates = [
     path.resolve(__dirname, '../../assets', filename),
     path.resolve(__dirname, '../assets', filename),
@@ -21,9 +28,32 @@ function getAssetPath(filename: string): string | null {
     path.resolve(process.cwd(), filename),
   ];
   for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
+    if (fs.existsSync(c)) {
+      assetPathCache.set(filename, c);
+      return c;
+    }
   }
+  assetPathCache.set(filename, null);
   return null;
+}
+
+function getAssetBuffer(filename: string): Buffer | null {
+  if (assetBufferCache.has(filename)) {
+    return assetBufferCache.get(filename)!;
+  }
+  const filePath = getAssetPath(filename);
+  if (!filePath) {
+    assetBufferCache.set(filename, null);
+    return null;
+  }
+  try {
+    const buf = fs.readFileSync(filePath);
+    assetBufferCache.set(filename, buf);
+    return buf;
+  } catch {
+    assetBufferCache.set(filename, null);
+    return null;
+  }
 }
 
 function formatDate(d: Date | string | null | undefined): string {
@@ -48,11 +78,11 @@ function formatCurrency(n: number | null | undefined, currency = 'INR'): string 
  */
 function drawPageWatermark(doc: any): void {
   try {
-    const watermarkPath =
-      getAssetPath('msk-invoice-watermark.png') ||
-      getAssetPath('msk-logo.png');
+    const watermarkBuf =
+      getAssetBuffer('msk-invoice-watermark.png') ||
+      getAssetBuffer('msk-logo.png');
 
-    if (!watermarkPath) return;
+    if (!watermarkBuf) return;
 
     const pageWidth = doc.page.width || 595.28;
     const pageHeight = doc.page.height || 841.89;
@@ -67,7 +97,7 @@ function drawPageWatermark(doc: any): void {
 
     doc.save();
     doc.opacity(0.14); // 14% opacity: bold, prominent, corporate watermark
-    doc.image(watermarkPath, x, y, {
+    doc.image(watermarkBuf, x, y, {
       width: wmWidth,
       height: wmHeight,
     });

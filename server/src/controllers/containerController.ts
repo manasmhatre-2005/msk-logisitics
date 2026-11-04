@@ -3,6 +3,7 @@ import prisma from '../prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { logAudit } from '../middleware/audit.js';
 import { CalculationService } from '../services/calculationService.js';
+import { invalidateDashboardCache } from './reportController.js';
 
 export class ContainerController {
   static async getAll(req: AuthRequest, res: Response) {
@@ -16,8 +17,14 @@ export class ContainerController {
         where.containerNumber = { contains: String(search).trim().toUpperCase() };
       }
 
+      const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 500) : 250;
+      const page = req.query.page ? Math.max(Number(req.query.page), 1) : 1;
+      const skip = req.query.page ? (page - 1) * limit : undefined;
+
       const containers = await prisma.container.findMany({
         where,
+        take: limit,
+        ...(skip !== undefined ? { skip } : {}),
         include: {
           party: { select: { id: true, legalName: true, gstin: true } },
           job: { select: { id: true, jobNumber: true, port: true } },
@@ -157,6 +164,7 @@ export class ContainerController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.status(201).json(container);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -212,6 +220,7 @@ export class ContainerController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -234,6 +243,7 @@ export class ContainerController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.json({ message: 'Container deleted successfully' });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });

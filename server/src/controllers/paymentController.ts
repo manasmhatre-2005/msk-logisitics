@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import prisma from '../prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { logAudit } from '../middleware/audit.js';
+import { invalidateDashboardCache } from './reportController.js';
 
 export class PaymentController {
   static async getAll(req: AuthRequest, res: Response) {
@@ -13,8 +14,14 @@ export class PaymentController {
       if (invoiceId) where.invoiceId = String(invoiceId);
       if (batchId) where.batchId = String(batchId);
 
+      const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 500) : 250;
+      const page = req.query.page ? Math.max(Number(req.query.page), 1) : 1;
+      const skip = req.query.page ? (page - 1) * limit : undefined;
+
       const payments = await prisma.payment.findMany({
         where,
+        take: limit,
+        ...(skip !== undefined ? { skip } : {}),
         include: {
           invoice: {
             select: {
@@ -318,6 +325,7 @@ export class PaymentController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.status(201).json(payment);
     } catch (err: any) {
       console.error('Payment record error:', err);

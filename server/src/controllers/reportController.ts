@@ -21,44 +21,64 @@ export class ReportController {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-      // Execute all dashboard queries in ONE single parallel Promise.all batch
+      // Execute optimized database aggregate queries in parallel
       const [
         totalParties,
         activeJobs,
         totalContainers,
-        allInvoices,
-        allRegisteredContainers,
+        validInvoiceAgg,
+        thisMonthInvoiceAgg,
+        pendingInvoicesCount,
         recentInvoices,
         recentJobs,
         activeContainers,
         upcomingInvoices,
+        sixMonthsInvoices,
+        // Container TEU counts via indexed queries
+        total40Count,
+        today20Count,
+        today40Count,
+        month20Count,
+        month40Count,
+        active20Count,
+        active40Count,
+        containerStatusGroups,
+        invoiceStatusGroups,
       ] = await Promise.all([
         prisma.party.count(),
         prisma.job.count({ where: { status: 'ACTIVE' } }),
         prisma.container.count(),
-        prisma.invoice.findMany({
-          select: {
-            id: true,
-            grandTotal: true,
-            taxableAmount: true,
+        // 1. All valid invoices financial totals (PostgreSQL aggregate)
+        prisma.invoice.aggregate({
+          where: { status: { not: 'CANCELLED' } },
+          _sum: {
             totalGst: true,
             balanceAmount: true,
-            paidAmount: true,
-            tdsAmount: true,
-            billType: true,
-            status: true,
-            invoiceDate: true,
           },
         }),
-        prisma.container.findMany({
-          select: {
-            id: true,
-            size: true,
-            status: true,
-            createdAt: true,
+        // 2. This month's invoices aggregate
+        prisma.invoice.aggregate({
+          where: {
+            status: { not: 'CANCELLED' },
+            invoiceDate: { gte: startOfMonth },
+          },
+          _sum: {
+            grandTotal: true,
+          },
+          _count: {
+            _all: true,
           },
         }),
+        // 3. Pending invoices count
+        prisma.invoice.count({
+          where: {
+            status: { not: 'CANCELLED' },
+            balanceAmount: { gt: 0 },
+          },
+        }),
+        // 4. Recent Invoices (limit 8)
         prisma.invoice.findMany({
           take: 8,
           orderBy: { invoiceDate: 'desc' },
@@ -67,6 +87,7 @@ export class ReportController {
             containers: { select: { containerNumber: true } },
           },
         }),
+        // 5. Recent Jobs (limit 5)
         prisma.job.findMany({
           take: 5,
           orderBy: { createdAt: 'desc' },
@@ -76,6 +97,7 @@ export class ReportController {
             _count: { select: { containers: true } },
           },
         }),
+        // 6. Active Containers (limit 6)
         prisma.container.findMany({
           where: { status: { not: 'COMPLETED' } },
           take: 6,
@@ -85,6 +107,7 @@ export class ReportController {
             job: { select: { jobNumber: true } },
           },
         }),
+        // 7. Upcoming due invoices (limit 5)
         prisma.invoice.findMany({
           where: {
             dueDate: { not: null },
@@ -94,42 +117,52 @@ export class ReportController {
           orderBy: { dueDate: 'asc' },
           include: { party: { select: { legalName: true } } },
         }),
+        // 8. Invoices from last 6 months only (for monthly revenue trend)
+        prisma.invoice.findMany({
+          where: {
+            status: { not: 'CANCELLED' },
+            invoiceDate: { gte: sixMonthsAgo },
+          },
+          select: {
+            invoiceDate: true,
+            grandTotal: true,
+            totalGst: true,
+            billType: true,
+          },
+        }),
+        // 9. Container TEUs (20 FT = 1 TEU, 40/45 FT = 2 TEUs)
+        prisma.container.count({ where: { size: { contains: '40' } } }),
+        prisma.container.count({ where: { createdAt: { gte: startOfToday }, size: { not: { contains: '40' } } } }),
+        prisma.container.count({ where: { createdAt: { gte: startOfToday }, size: { contains: '40' } } }),
+        prisma.container.count({ where: { createdAt: { gte: startOfMonth }, size: { not: { contains: '40' } } } }),
+        prisma.container.count({ where: { createdAt: { gte: startOfMonth }, size: { contains: '40' } } }),
+        prisma.container.count({ where: { status: { notIn: ['COMPLETED', 'CANCELLED'] }, size: { not: { contains: '40' } } } }),
+        prisma.container.count({ where: { status: { notIn: ['COMPLETED', 'CANCELLED'] }, size: { contains: '40' } } }),
+        prisma.container.groupBy({ by: ['status'], _count: { id: true } }),
+        prisma.invoice.groupBy({ by: ['status'], _count: { id: true } }),
       ]);
 
-      const validInvoices = allInvoices.filter((inv) => inv.status !== 'CANCELLED');
-      const thisMonthInvoices = validInvoices.filter((inv) => new Date(inv.invoiceDate) >= startOfMonth);
-      const thisMonthBilling = thisMonthInvoices.reduce((sum, inv) => sum + (inv.billType === 'CREDIT_NOTE' ? -inv.grandTotal : inv.grandTotal), 0);
-      const totalGstCollected = validInvoices.reduce((sum, inv) => sum + inv.totalGst, 0);
-      const outstandingAmount = validInvoices.reduce((sum, inv) => sum + inv.balanceAmount, 0);
-      const pendingInvoicesCount = validInvoices.filter((inv) => inv.balanceAmount > 0).length;
+      const totalGstCollected = validInvoiceAgg._sum.totalGst || 0;
+      const outstandingAmount = validInvoiceAgg._sum.balanceAmount || 0;
+      const invoicesThisMonth = thisMonthInvoiceAgg._count._all || 0;
+      const thisMonthBilling = thisMonthInvoiceAgg._sum.grandTotal || 0;
 
-      // TEU Tracking (20 FT = 1 TEU, 40 FT = 2 TEUs)
-      let totalTeus = 0;
-      let todayTeus = 0;
-      let thisMonthTeus = 0;
-      let activeTeus = 0;
+      // Calculate TEUs
+      const total20Count = Math.max(0, totalContainers - total40Count);
+      const totalTeus = total20Count * 1 + total40Count * 2;
+      const todayTeus = today20Count * 1 + today40Count * 2;
+      const thisMonthTeus = month20Count * 1 + month40Count * 2;
+      const activeTeus = active20Count * 1 + active40Count * 2;
 
-      // Single pass over containers for both TEUs and status counts (0 redundant DB queries)
+      // Group counts into fast hash maps
       const containerStatusCounts: Record<string, number> = {};
-      for (const c of allRegisteredContainers) {
-        containerStatusCounts[c.status] = (containerStatusCounts[c.status] || 0) + 1;
-        const teu = (c.size && (c.size.includes('40') || c.size.includes('45'))) ? 2 : 1;
-        totalTeus += teu;
-        if (new Date(c.createdAt) >= startOfToday) {
-          todayTeus += teu;
-        }
-        if (new Date(c.createdAt) >= startOfMonth) {
-          thisMonthTeus += teu;
-        }
-        if (c.status !== 'COMPLETED' && c.status !== 'CANCELLED') {
-          activeTeus += teu;
-        }
+      for (const g of containerStatusGroups) {
+        containerStatusCounts[g.status] = g._count.id;
       }
 
-      // Invoice status breakdown
       const invoiceStatusCounts: Record<string, number> = {};
-      for (const inv of allInvoices) {
-        invoiceStatusCounts[inv.status] = (invoiceStatusCounts[inv.status] || 0) + 1;
+      for (const g of invoiceStatusGroups) {
+        invoiceStatusCounts[g.status] = g._count.id;
       }
 
       // Monthly billing breakdown (Last 6 months)
@@ -139,14 +172,14 @@ export class ReportController {
         const nextD = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
         const monthLabel = d.toLocaleString('en-US', { month: 'short' });
 
-        const monthInvs = allInvoices.filter((inv) => {
+        const monthInvs = sixMonthsInvoices.filter((inv) => {
           const invDate = new Date(inv.invoiceDate);
           return invDate >= d && invDate < nextD;
         });
 
         monthlyTrend.push({
           month: monthLabel,
-          billing: monthInvs.reduce((sum, inv) => sum + inv.grandTotal, 0),
+          billing: monthInvs.reduce((sum, inv) => sum + (inv.billType === 'CREDIT_NOTE' ? -inv.grandTotal : inv.grandTotal), 0),
           gst: monthInvs.reduce((sum, inv) => sum + inv.totalGst, 0),
           count: monthInvs.length,
         });
@@ -165,7 +198,7 @@ export class ReportController {
         totalParties,
         activeJobs,
         totalContainers,
-        invoicesThisMonth: thisMonthInvoices.length,
+        invoicesThisMonth,
         thisMonthBilling,
         totalGstCollected,
         outstandingAmount,

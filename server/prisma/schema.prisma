@@ -97,6 +97,10 @@ model Party {
   containers         Container[]
   invoices           Invoice[]
   payments           Payment[]
+
+  @@index([legalName])
+  @@index([createdAt])
+  @@index([gstStatus])
 }
 
 model PartyAddress {
@@ -148,6 +152,9 @@ model Exporter {
   containers    Container[]
   invoices      Invoice[]
   dataEntryRecords DataEntryRecord[]
+
+  @@index([name])
+  @@index([createdAt])
 }
 
 model Job {
@@ -214,6 +221,9 @@ model Container {
   @@index([jobId])
   @@index([exporterId])
   @@index([status])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([status, createdAt])
 }
 
 model ChargeMaster {
@@ -304,6 +314,12 @@ model Invoice {
   @@index([createdAt])
   @@index([partyId, invoiceDate])
   @@index([dueDate])
+  @@index([jobId])
+  @@index([exporterId])
+  @@index([billToName])
+  @@index([originalInvoiceNumber])
+  @@index([status, invoiceDate])
+  @@index([status, balanceAmount])
 }
 
 model InvoiceContainer {
@@ -385,6 +401,8 @@ model Payment {
   @@index([partyId])
   @@index([paymentDate])
   @@index([batchId])
+  @@index([referenceNumber])
+  @@index([createdAt])
 }
 
 model WhatsAppMessage {

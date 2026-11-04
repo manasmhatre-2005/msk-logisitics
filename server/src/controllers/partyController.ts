@@ -3,6 +3,7 @@ import prisma from '../prisma.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { logAudit } from '../middleware/audit.js';
 import { GSTService } from '../services/gstService.js';
+import { invalidateDashboardCache } from './reportController.js';
 
 export class PartyController {
   static async getAll(req: AuthRequest, res: Response) {
@@ -12,16 +13,22 @@ export class PartyController {
 
       if (search) {
         where.OR = [
-          { legalName: { contains: search } },
-          { tradeName: { contains: search } },
-          { gstin: { contains: search } },
-          { city: { contains: search } },
-          { contactPerson: { contains: search } },
+          { legalName: { contains: search, mode: 'insensitive' } },
+          { tradeName: { contains: search, mode: 'insensitive' } },
+          { gstin: { contains: search, mode: 'insensitive' } },
+          { city: { contains: search, mode: 'insensitive' } },
+          { contactPerson: { contains: search, mode: 'insensitive' } },
         ];
       }
 
+      const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 500) : 250;
+      const page = req.query.page ? Math.max(Number(req.query.page), 1) : 1;
+      const skip = req.query.page ? (page - 1) * limit : undefined;
+
       const parties = await prisma.party.findMany({
         where,
+        take: limit,
+        ...(skip !== undefined ? { skip } : {}),
         include: {
           _count: {
             select: { invoices: true, jobs: true, containers: true },
@@ -163,6 +170,7 @@ export class PartyController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.status(201).json(party);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -202,6 +210,7 @@ export class PartyController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -227,6 +236,7 @@ export class PartyController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.json({ message: 'Party deleted successfully' });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });

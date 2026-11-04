@@ -8,6 +8,7 @@ import { PDFService } from '../services/pdfService.js';
 import { EmailService } from '../services/emailService.js';
 import { SequenceService } from '../services/sequenceService.js';
 import { DocumentService } from '../services/documentService.js';
+import { invalidateDashboardCache } from './reportController.js';
 
 export class InvoiceController {
   static async getAll(req: AuthRequest, res: Response) {
@@ -51,8 +52,14 @@ export class InvoiceController {
         ];
       }
 
+      const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 500) : 250;
+      const page = req.query.page ? Math.max(Number(req.query.page), 1) : 1;
+      const skip = req.query.page ? (page - 1) * limit : undefined;
+
       const invoices = await prisma.invoice.findMany({
         where,
+        take: limit,
+        ...(skip !== undefined ? { skip } : {}),
         include: {
           party: { select: { id: true, legalName: true, gstin: true } },
           job: { select: { id: true, jobNumber: true } },
@@ -422,6 +429,7 @@ export class InvoiceController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.status(201).json(invoice);
     } catch (err: any) {
       console.error('Invoice create error:', err);
@@ -639,6 +647,7 @@ export class InvoiceController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -673,6 +682,7 @@ export class InvoiceController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -703,6 +713,7 @@ export class InvoiceController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.json(updated);
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -742,6 +753,7 @@ export class InvoiceController {
         req,
       });
 
+      invalidateDashboardCache();
       return res.json({ success: true, message: `Invoice ${invoice.invoiceNumber} deleted successfully` });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -1046,8 +1058,24 @@ export class InvoiceController {
         `);
       }
 
-      // Generate the exact original PDF for this bill
-      const pdfBuffer = await PDFService.generateInvoicePDF(invoice.id);
+      // Fast-path: Check durable document storage first for instant streaming (~10ms)
+      const cached = await DocumentService.getInvoiceDocument(invoice.id);
+      let pdfBuffer: Buffer;
+      if (cached && cached.buffer) {
+        pdfBuffer = cached.buffer;
+      } else {
+        // Generate the exact original PDF for this bill
+        pdfBuffer = await PDFService.generateInvoicePDF(invoice.id);
+        // Persist to document storage so subsequent scans open in ~10ms
+        DocumentService.saveInvoiceDocument(
+          invoice.id,
+          invoice.invoiceNumber,
+          invoice.billType || 'STANDARD',
+          pdfBuffer,
+          { source: 'qr_verification' }
+        ).catch((e) => console.warn('[streamDirectBillPdf] caching warning:', e));
+      }
+
       const safeInvoiceNumber = (invoice.invoiceNumber || 'MSK_Bill').replace(/[/\\?%*:|"<>]/g, '_');
 
       res.setHeader('Content-Type', 'application/pdf');

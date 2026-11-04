@@ -25,13 +25,36 @@ const DEV_DEMO_CREDENTIALS: Record<UserRole, { email: string; pass: string }> = 
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Fast hydration from cached session to eliminate blank loading screen on page refresh
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const token = localStorage.getItem('logibill_token') || sessionStorage.getItem('logibill_token');
+      const cached = localStorage.getItem('logibill_user');
+      if (token && cached) {
+        return JSON.parse(cached);
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [loading, setLoading] = useState<boolean>(() => {
+    try {
+      const token = localStorage.getItem('logibill_token') || sessionStorage.getItem('logibill_token');
+      const cached = localStorage.getItem('logibill_user');
+      // If we have token and cached user profile, render immediately with 0ms visual delay
+      return Boolean(token && !cached);
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     const handleUnauthorized = () => {
       localStorage.removeItem('logibill_token');
       sessionStorage.removeItem('logibill_token');
+      localStorage.removeItem('logibill_user');
       setUser(null);
     };
     window.addEventListener('auth:unauthorized', handleUnauthorized);
@@ -42,13 +65,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       try {
         if (typeof window !== 'undefined' && window.location.search.includes('preview=dashboard')) {
-          setUser({
+          const previewUser: User = {
             id: 'admin-preview-id',
             name: 'MSK System Administrator',
             email: 'admin@login',
             role: 'ADMIN',
             createdAt: new Date().toISOString(),
-          } as User);
+          } as User;
+          setUser(previewUser);
           setLoading(false);
           return;
         }
@@ -57,14 +81,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (token) {
           const res = await api.getMe();
           setUser(res.user);
+          localStorage.setItem('logibill_user', JSON.stringify(res.user));
         } else {
           // Require authentication for all users in production
           setUser(null);
+          localStorage.removeItem('logibill_user');
         }
       } catch (err) {
         // Fall back to clean unauthenticated state on token expiration or invalidity
         localStorage.removeItem('logibill_token');
         sessionStorage.removeItem('logibill_token');
+        localStorage.removeItem('logibill_user');
         setUser(null);
       } finally {
         setLoading(false);
@@ -76,6 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, pass: string): Promise<User> => {
     const res = await api.login(email, pass);
     localStorage.setItem('logibill_token', res.token);
+    localStorage.setItem('logibill_user', JSON.stringify(res.user));
     setUser(res.user);
     return res.user;
   };
@@ -88,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       localStorage.removeItem('logibill_token');
       sessionStorage.removeItem('logibill_token');
+      localStorage.removeItem('logibill_user');
       if (typeof window !== 'undefined' && window.location.search.includes('preview=')) {
         const cleanUrl = window.location.pathname;
         window.history.replaceState(null, '', cleanUrl);

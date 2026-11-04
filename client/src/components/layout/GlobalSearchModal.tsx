@@ -30,23 +30,30 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({
       return;
     }
 
+    let isCurrent = true;
     const timer = setTimeout(async () => {
-      if (query.trim().length >= 2) {
+      const trimmed = query.trim();
+      if (trimmed.length >= 2) {
         setLoading(true);
         try {
-          const res = await api.search(query.trim());
-          setResults(res);
+          const res = await api.search(trimmed);
+          if (isCurrent) {
+            setResults(res);
+          }
         } catch (e) {
-          console.error(e);
+          if (isCurrent) console.error(e);
         } finally {
-          setLoading(false);
+          if (isCurrent) setLoading(false);
         }
       } else {
         setResults({ parties: [], invoices: [], containers: [], jobs: [] });
       }
-    }, 250);
+    }, 200);
 
-    return () => clearTimeout(timer);
+    return () => {
+      isCurrent = false;
+      clearTimeout(timer);
+    };
   }, [query, isOpen]);
 
   if (!isOpen) return null;
