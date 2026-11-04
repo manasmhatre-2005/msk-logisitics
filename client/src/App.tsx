@@ -68,9 +68,22 @@ const MainApp: React.FC = () => {
 
   const { user, loading, logout } = useAuth();
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
-  const [currentTab, setCurrentTab] = useState('dashboard');
+  const [currentTab, setCurrentTab] = useState<string>(() => {
+    const p = window.location.pathname;
+    const matchInvoice = p.match(/\/(?:admin|account)\/invoices(?:\/(.+))?/);
+    if (matchInvoice) return 'invoices';
+    const matchTab = p.match(/\/(?:admin|account)\/([a-z\-]+)/);
+    if (matchTab && ['dashboard', 'parties', 'exporters', 'jobs', 'containers', 'charges', 'invoices', 'payments', 'reports', 'settings', 'audit'].includes(matchTab[1])) {
+      return matchTab[1];
+    }
+    return 'dashboard';
+  });
   const [selectedPartyId, setSelectedPartyId] = useState<string | null>(null);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(() => {
+    const matchInvoice = window.location.pathname.match(/\/(?:admin|account)\/invoices\/(.+)/);
+    return matchInvoice ? matchInvoice[1] : null;
+  });
+  const [invoiceRefreshCounter, setInvoiceRefreshCounter] = useState(0);
   const [printableInvoice, setPrintableInvoice] = useState<Invoice | null>(null);
   const [printableCreditNote, setPrintableCreditNote] = useState<Invoice | null>(null);
   const [printableHtInvoice, setPrintableHtInvoice] = useState<Invoice | null>(null);
@@ -123,6 +136,26 @@ const MainApp: React.FC = () => {
       window.history.pushState(null, '', to);
     }
     setCurrentPath(to);
+
+    const matchInvoice = to.match(/\/(?:admin|account)\/invoices\/(.+)/);
+    if (matchInvoice) {
+      setCurrentTab('invoices');
+      setSelectedInvoiceId(matchInvoice[1]);
+      return;
+    }
+
+    const matchTab = to.match(/\/(?:admin|account)\/([a-z\-]+)/);
+    if (matchTab) {
+      const tab = matchTab[1];
+      if (tab === 'invoices') {
+        setCurrentTab('invoices');
+        setSelectedInvoiceId(null);
+      } else if (['dashboard', 'parties', 'exporters', 'jobs', 'containers', 'charges', 'payments', 'reports', 'settings', 'audit'].includes(tab)) {
+        setCurrentTab(tab);
+        setSelectedPartyId(null);
+        setSelectedInvoiceId(null);
+      }
+    }
   };
 
   // Robust session teardown and state isolation on sign out
@@ -483,6 +516,7 @@ const MainApp: React.FC = () => {
                   navigate(user.role === 'ADMIN' ? `/admin/invoices/${id}` : `/account/invoices/${id}`);
                 }}
                 onPrintInvoice={(inv) => handlePrintInvoice(inv)}
+                refreshTrigger={invoiceRefreshCounter}
               />
             )
           )}
@@ -537,6 +571,7 @@ const MainApp: React.FC = () => {
               initialBillType={selectedBillType}
               onSuccess={(createdInv) => {
                 setIsInvoiceWizardOpen(false);
+                setInvoiceRefreshCounter((c) => c + 1);
                 setSelectedInvoiceId(createdInv.id);
                 setCurrentTab('invoices');
               }}
@@ -553,6 +588,7 @@ const MainApp: React.FC = () => {
           onClose={() => setIsCreditNoteFormOpen(false)}
           onSuccess={(savedCn) => {
             setIsCreditNoteFormOpen(false);
+            setInvoiceRefreshCounter((c) => c + 1);
             setPrintableCreditNote(savedCn);
             setSelectedInvoiceId(savedCn.id);
             setCurrentTab('invoices');
@@ -568,6 +604,7 @@ const MainApp: React.FC = () => {
           initialParty={prefilledPartyForWizard}
           onSuccess={(savedHt) => {
             setIsHtBillFormOpen(false);
+            setInvoiceRefreshCounter((c) => c + 1);
             setPrintableHtInvoice(savedHt);
             setSelectedInvoiceId(savedHt.id);
             setCurrentTab('invoices');
@@ -583,6 +620,7 @@ const MainApp: React.FC = () => {
           initialParty={prefilledPartyForWizard}
           onSuccess={(savedEc) => {
             setIsEmptyContainerFormOpen(false);
+            setInvoiceRefreshCounter((c) => c + 1);
             setPrintableEmptyContainer(savedEc);
             setSelectedInvoiceId(savedEc.id);
             setCurrentTab('invoices');

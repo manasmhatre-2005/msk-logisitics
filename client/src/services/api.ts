@@ -206,12 +206,45 @@ export const api = {
     if (invoiceDate) params.append('invoiceDate', invoiceDate);
     return request<{ nextInvoiceNumber: string }>(`/invoices/next-number?${params.toString()}`);
   },
-  getInvoices: (status?: string, partyId?: string, search?: string) => {
+  getInvoices: (
+    paramsOrStatus?: string | {
+      status?: string;
+      paymentStatus?: string;
+      partyId?: string;
+      exporterId?: string;
+      search?: string;
+      billType?: string;
+      financialYear?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      sortBy?: string;
+      sortOrder?: string;
+      page?: number;
+      limit?: number;
+      paginate?: boolean;
+    },
+    partyId?: string,
+    search?: string
+  ) => {
     const params = new URLSearchParams();
-    if (status) params.append('status', status);
-    if (partyId) params.append('partyId', partyId);
-    if (search) params.append('search', search);
-    return request<Invoice[]>(`/invoices?${params.toString()}`);
+    if (typeof paramsOrStatus === 'object' && paramsOrStatus !== null) {
+      Object.entries(paramsOrStatus).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '' && v !== 'ALL') {
+          params.append(k, String(v));
+        }
+      });
+      if (paramsOrStatus.paginate) {
+        params.append('paginate', 'true');
+      }
+    } else if (typeof paramsOrStatus === 'string') {
+      if (paramsOrStatus && paramsOrStatus !== 'ALL') params.append('status', paramsOrStatus);
+      if (partyId) params.append('partyId', partyId);
+      if (search) params.append('search', search);
+    } else {
+      if (partyId) params.append('partyId', partyId);
+      if (search) params.append('search', search);
+    }
+    return request<any>(`/invoices?${params.toString()}`);
   },
   getInvoice: (id: string) => request<Invoice>(`/invoices/${id}`),
   calculateInvoice: (data: any) =>

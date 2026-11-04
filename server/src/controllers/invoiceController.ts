@@ -13,9 +13,28 @@ import { invalidateDashboardCache } from './reportController.js';
 export class InvoiceController {
   static async getAll(req: AuthRequest, res: Response) {
     try {
-      const { status, partyId, dateFrom, dateTo, search, billType } = req.query;
+      const {
+        status,
+        paymentStatus,
+        partyId,
+        exporterId,
+        dateFrom,
+        dateTo,
+        search,
+        billType,
+        financialYear,
+        sortBy = 'invoiceDate',
+        sortOrder = 'desc',
+        paginate,
+      } = req.query;
       const where: any = {};
 
+      // 1. Bill Type Filter
+      if (billType && billType !== 'ALL') {
+        where.billType = String(billType);
+      }
+
+      // 2. Invoice Document Status Filter (DRAFT, FINALIZED, CANCELLED)
       if (status && status !== 'ALL') {
         if (status === 'CREDIT_NOTE') {
           where.billType = 'CREDIT_NOTE';
@@ -27,47 +46,117 @@ export class InvoiceController {
           where.status = String(status);
         }
       }
-      if (billType) {
-        where.billType = String(billType);
+
+      // 3. Financial Payment Status Filter (PAID, PARTIALLY_PAID, UNPAID, OVERDUE)
+      if (paymentStatus && paymentStatus !== 'ALL') {
+        if (paymentStatus === 'PAID') {
+          where.status = { not: 'CANCELLED' };
+          where.balanceAmount = { lte: 0.01 };
+        } else if (paymentStatus === 'PARTIALLY_PAID') {
+          where.status = { not: 'CANCELLED' };
+          where.paidAmount = { gt: 0 };
+          where.balanceAmount = { gt: 0.01 };
+        } else if (paymentStatus === 'UNPAID') {
+          where.status = { not: 'CANCELLED' };
+          where.paidAmount = { lte: 0 };
+          where.balanceAmount = { gt: 0.01 };
+        } else if (paymentStatus === 'OVERDUE') {
+          where.status = { not: 'CANCELLED' };
+          where.balanceAmount = { gt: 0.01 };
+          where.dueDate = { lt: new Date() };
+        }
       }
+
+      // 4. Entity References (Party & Exporter)
       if (partyId) {
         where.partyId = String(partyId);
       }
-      if (dateFrom || dateTo) {
-        where.invoiceDate = {};
-        if (dateFrom) where.invoiceDate.gte = new Date(String(dateFrom));
-        if (dateTo) where.invoiceDate.lte = new Date(String(dateTo));
+      if (exporterId) {
+        where.exporterId = String(exporterId);
       }
 
+      // 5. Date Range & Financial Year
+      if (dateFrom || dateTo) {
+        where.invoiceDate = where.invoiceDate || {};
+        if (dateFrom) where.invoiceDate.gte = new Date(String(dateFrom));
+        if (dateTo) {
+          const toD = new Date(String(dateTo));
+          toD.setHours(23, 59, 59, 999);
+          where.invoiceDate.lte = toD;
+        }
+      }
+
+      if (financialYear && financialYear !== 'ALL') {
+        const parts = String(financialYear).split('-');
+        if (parts.length === 2) {
+          const startYear = parseInt(parts[0], 10);
+          if (!isNaN(startYear)) {
+            const startFy = new Date(startYear, 3, 1); // 1st April
+            const endFy = new Date(startYear + 1, 2, 31, 23, 59, 59, 999); // 31st March
+            where.invoiceDate = {
+              ...(where.invoiceDate || {}),
+              gte: startFy,
+              lte: endFy,
+            };
+          }
+        }
+      }
+
+      // 6. Case-insensitive Global Search across all relevant identifiers
       if (search) {
         const query = String(search).trim();
         where.OR = [
-          { invoiceNumber: { contains: query } },
-          { originalInvoiceNumber: { contains: query } },
-          { billToName: { contains: query } },
-          { billToGstin: { contains: query } },
-          { sbNumbers: { contains: query } },
-          { containers: { some: { containerNumber: { contains: query } } } },
-          { job: { jobNumber: { contains: query } } },
+          { invoiceNumber: { contains: query, mode: 'insensitive' } },
+          { originalInvoiceNumber: { contains: query, mode: 'insensitive' } },
+          { billToName: { contains: query, mode: 'insensitive' } },
+          { billToGstin: { contains: query, mode: 'insensitive' } },
+          { sbNumbers: { contains: query, mode: 'insensitive' } },
+          { party: { legalName: { contains: query, mode: 'insensitive' } } },
+          { exporter: { name: { contains: query, mode: 'insensitive' } } },
+          { containers: { some: { containerNumber: { contains: query, mode: 'insensitive' } } } },
+          { job: { jobNumber: { contains: query, mode: 'insensitive' } } },
         ];
       }
 
+      // 7. Dynamic Sorting
+      const validSortFields = ['invoiceDate', 'grandTotal', 'taxableAmount', 'totalGst', 'balanceAmount', 'paidAmount', 'invoiceNumber', 'createdAt'];
+      const field = validSortFields.includes(String(sortBy)) ? String(sortBy) : 'invoiceDate';
+      const order = String(sortOrder).toLowerCase() === 'asc' ? 'asc' : 'desc';
+      const orderBy = { [field]: order };
+
+      // 8. Server-side Pagination
       const limit = req.query.limit ? Math.min(Math.max(Number(req.query.limit), 1), 500) : 250;
       const page = req.query.page ? Math.max(Number(req.query.page), 1) : 1;
-      const skip = req.query.page ? (page - 1) * limit : undefined;
+      const skip = (page - 1) * limit;
 
-      const invoices = await prisma.invoice.findMany({
-        where,
-        take: limit,
-        ...(skip !== undefined ? { skip } : {}),
-        include: {
-          party: { select: { id: true, legalName: true, gstin: true } },
-          job: { select: { id: true, jobNumber: true } },
-          containers: { select: { containerNumber: true, size: true } },
-          _count: { select: { items: true, payments: true } },
-        },
-        orderBy: { invoiceDate: 'desc' },
-      });
+      const [totalCount, invoices] = await Promise.all([
+        prisma.invoice.count({ where }),
+        prisma.invoice.findMany({
+          where,
+          take: limit,
+          skip,
+          include: {
+            party: { select: { id: true, legalName: true, gstin: true, mobile: true, email: true } },
+            exporter: { select: { id: true, name: true } },
+            job: { select: { id: true, jobNumber: true, port: true } },
+            containers: { select: { id: true, containerNumber: true, size: true, type: true } },
+            _count: { select: { items: true, payments: true } },
+          },
+          orderBy,
+        }),
+      ]);
+
+      res.setHeader('X-Total-Count', String(totalCount));
+
+      if (paginate === 'true' || req.query.page) {
+        return res.json({
+          invoices,
+          totalCount,
+          page,
+          limit,
+          totalPages: Math.ceil(totalCount / limit) || 1,
+        });
+      }
 
       return res.json(invoices);
     } catch (err: any) {
