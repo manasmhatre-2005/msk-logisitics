@@ -146,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-1.5 text-xs font-semibold bg-white text-[#102B4E] hover:bg-slate-50 border border-[#DCE6F1] px-3 py-1.5 rounded-lg transition-all shadow-2xs"
             title="Add Job"
           >
-            <Ship className="w-3.5 h-3.5 text-slate-600" />
+            <FileText className="w-3.5 h-3.5 text-slate-600" />
             <span>Job</span>
           </button>
           <button

@@ -268,9 +268,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* ========================================================
           1. EXACT SPLIT-LAYOUT HERO BANNER MATCHING REFERENCE
           ======================================================== */}
-      <div className="relative overflow-hidden rounded-2xl border border-[#DCE6F1] bg-white shadow-sm flex flex-col xl:flex-row items-stretch">
+      <div className="relative overflow-hidden rounded-2xl border border-[#DCE6F1] bg-white shadow-sm flex flex-col lg:flex-row items-stretch">
         {/* Left Portion: Branding, Global Map Route, 4 Feature Cards, Actions & Search */}
-        <div className="relative z-10 flex-[1.4] p-6 sm:p-7 lg:p-8 flex flex-col justify-between overflow-hidden bg-white">
+        <div className="relative z-10 flex-[1.25] p-5 sm:p-6 lg:p-7 flex flex-col justify-between overflow-hidden bg-white">
           {/* Subtle Global Dotted Flight & Maritime Routes Background SVG */}
           <svg
             className="absolute inset-0 w-full h-full pointer-events-none opacity-40 z-0"
@@ -316,7 +316,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {/* Main Heading in Montserrat / Inter */}
             <h1
               className="font-heading font-black tracking-tight text-[#062746] uppercase leading-[1.05]"
-              style={{ fontSize: 'clamp(1.6rem, 2.5vw, 2.4rem)' }}
+              style={{ fontSize: 'clamp(1.5rem, 2.3vw, 2.3rem)' }}
             >
               <span className="text-[#ED1C24]">MSK LOGISTIC</span> SOLUTION
             </h1>
@@ -428,12 +428,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        {/* Right Portion: High-Definition Logistics Montage Photo with Diagonal Border */}
-        <div className="relative flex-1 min-h-[220px] sm:min-h-[240px] xl:min-h-auto overflow-hidden bg-slate-900 flex items-center justify-end">
+        {/* Right Portion: High-Definition Logistics Montage Photo seamlessly blended on white */}
+        <div className="relative flex-1 min-h-[220px] sm:min-h-[250px] lg:min-h-[260px] overflow-hidden bg-white flex items-center justify-end">
           <img
             src="/images/dashboard-hero-right-hd.png"
             alt="MSK Logistics Multimodal Fleet - Ship, Container Truck, Train, Port Cranes, Airplane"
-            className="w-full h-full object-cover object-center xl:object-right block"
+            className="w-full h-full object-cover object-center lg:object-right block select-none"
             loading="eager"
           />
         </div>
@@ -444,8 +444,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           ======================================================== */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: TOTAL PARTIES */}
-        <div className="relative overflow-hidden rounded-2xl bg-white border border-[#DCE6F1] p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#0284C7]" />
+        <div className="relative overflow-hidden rounded-2xl bg-white border border-[#93C5FD] p-5 shadow-2xs transition-all hover:shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between">
               <div>
@@ -455,9 +454,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="text-3xl font-extrabold text-[#102B4E] tracking-tight">
                     {loading ? '...' : (stats?.totalParties || 0)}
-                  </span>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                    <TrendingUp className="w-2.5 h-2.5 mr-0.5" /> +8.4%
                   </span>
                 </div>
               </div>
@@ -469,17 +465,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
               Verified Forwarders & Consignees
             </p>
           </div>
-          {/* Subtle Bottom Curved SVG Sparkline */}
+          {/* Subtle Area Sparkline with nodes */}
           <div className="mt-3 pt-1">
-            <svg className="w-full h-6 text-[#0284C7]" viewBox="0 0 100 24" fill="none" preserveAspectRatio="none">
-              <path d="M 0 20 Q 25 18 50 12 T 100 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            <svg className="w-full h-8" viewBox="0 0 100 28" fill="none" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="blueSpark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#38BDF8" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#38BDF8" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M 0 24 Q 25 22 50 16 T 100 8 L 100 28 L 0 28 Z" fill="url(#blueSpark)" />
+              <path d="M 0 24 Q 25 22 50 16 T 100 8" stroke="#38BDF8" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="25" cy="22.5" r="1.5" fill="#38BDF8" />
+              <circle cx="50" cy="16" r="1.5" fill="#38BDF8" />
+              <circle cx="75" cy="11" r="1.5" fill="#38BDF8" />
+              <circle cx="100" cy="8" r="2" fill="#38BDF8" />
             </svg>
           </div>
         </div>
 
         {/* KPI 2: ACTIVE CONTAINERS */}
-        <div className="relative overflow-hidden rounded-2xl bg-white border border-[#DCE6F1] p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#062746]" />
+        <div className="relative overflow-hidden rounded-2xl bg-white border-2 border-[#4338CA] p-5 shadow-2xs transition-all hover:shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between">
               <div>
@@ -490,12 +496,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <span className="text-3xl font-extrabold text-[#102B4E] tracking-tight">
                     {loading ? '...' : (stats?.activeContainersCount || 0)}
                   </span>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                    <TrendingUp className="w-2.5 h-2.5 mr-0.5" /> +14.2%
-                  </span>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-[#062746] flex items-center justify-center shrink-0 border border-indigo-100">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-[#4338CA] flex items-center justify-center shrink-0 border border-indigo-100">
                 <Box className="w-5 h-5" />
               </div>
             </div>
@@ -504,15 +507,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </p>
           </div>
           <div className="mt-3 pt-1">
-            <svg className="w-full h-6 text-[#062746]" viewBox="0 0 100 24" fill="none" preserveAspectRatio="none">
-              <path d="M 0 22 Q 30 20 60 14 T 100 8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            <svg className="w-full h-8" viewBox="0 0 100 28" fill="none" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="purpleSpark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#6366F1" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#6366F1" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M 0 25 Q 30 22 60 16 T 100 10 L 100 28 L 0 28 Z" fill="url(#purpleSpark)" />
+              <path d="M 0 25 Q 30 22 60 16 T 100 10" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="30" cy="23" r="1.5" fill="#6366F1" />
+              <circle cx="60" cy="16" r="1.5" fill="#6366F1" />
+              <circle cx="80" cy="12" r="1.5" fill="#6366F1" />
+              <circle cx="100" cy="10" r="2" fill="#6366F1" />
             </svg>
           </div>
         </div>
 
         {/* KPI 3: INVOICES THIS MONTH */}
-        <div className="relative overflow-hidden rounded-2xl bg-white border border-[#DCE6F1] p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#ED1C24]" />
+        <div className="relative overflow-hidden rounded-2xl bg-white border-2 border-[#ED1C24] p-5 shadow-2xs transition-all hover:shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between">
               <div>
@@ -522,9 +535,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="mt-1 flex items-baseline gap-2">
                   <span className="text-3xl font-extrabold text-[#102B4E] tracking-tight">
                     {loading ? '...' : (stats?.invoicesThisMonthCount || 0)}
-                  </span>
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                    <TrendingUp className="w-2.5 h-2.5 mr-0.5" /> +19.5%
                   </span>
                 </div>
               </div>
@@ -537,15 +547,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </p>
           </div>
           <div className="mt-3 pt-1">
-            <svg className="w-full h-6 text-[#ED1C24]" viewBox="0 0 100 24" fill="none" preserveAspectRatio="none">
-              <path d="M 0 22 Q 35 22 70 16 T 100 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            <svg className="w-full h-8" viewBox="0 0 100 28" fill="none" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="redSpark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ED1C24" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#ED1C24" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M 0 26 Q 35 24 70 18 T 100 12 L 100 28 L 0 28 Z" fill="url(#redSpark)" />
+              <path d="M 0 26 Q 35 24 70 18 T 100 12" stroke="#ED1C24" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="35" cy="24.5" r="1.5" fill="#ED1C24" />
+              <circle cx="70" cy="18" r="1.5" fill="#ED1C24" />
+              <circle cx="85" cy="14" r="1.5" fill="#ED1C24" />
+              <circle cx="100" cy="12" r="2" fill="#ED1C24" />
             </svg>
           </div>
         </div>
 
         {/* KPI 4: OUTSTANDING AMOUNT */}
-        <div className="relative overflow-hidden rounded-2xl bg-white border border-[#DCE6F1] p-5 shadow-sm transition-all hover:shadow-md flex flex-col justify-between">
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#F59E0B]" />
+        <div className="relative overflow-hidden rounded-2xl bg-white border-2 border-[#F59E0B] p-5 shadow-2xs transition-all hover:shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between">
               <div>
@@ -567,8 +587,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </p>
           </div>
           <div className="mt-3 pt-1">
-            <svg className="w-full h-6 text-[#F59E0B]" viewBox="0 0 100 24" fill="none" preserveAspectRatio="none">
-              <path d="M 0 22 Q 40 22 75 18 T 100 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            <svg className="w-full h-8" viewBox="0 0 100 28" fill="none" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="amberSpark" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.25" />
+                  <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <path d="M 0 26 Q 40 24 75 18 T 100 14 L 100 28 L 0 28 Z" fill="url(#amberSpark)" />
+              <path d="M 0 26 Q 40 24 75 18 T 100 14" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="40" cy="24.5" r="1.5" fill="#F59E0B" />
+              <circle cx="75" cy="18" r="1.5" fill="#F59E0B" />
+              <circle cx="90" cy="15.5" r="1.5" fill="#F59E0B" />
+              <circle cx="100" cy="14" r="2" fill="#F59E0B" />
             </svg>
           </div>
         </div>
@@ -581,7 +612,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Header with Icon, Title, Subtitle, Segmented Toggle & Navigation Link */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#DCE6F1]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0284C7] flex items-center justify-center border border-blue-100 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#1877F2] flex items-center justify-center border border-blue-100 shrink-0">
               <BarChart3 className="w-5 h-5" />
             </div>
             <div>
@@ -603,7 +634,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   onClick={() => setTeuTimeframe(t)}
                   className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                     teuTimeframe === t
-                      ? 'bg-[#062746] text-white shadow-2xs'
+                      ? 'bg-[#1877F2] text-white shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -615,7 +646,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {/* Container Operations Navigation Link */}
             <button
               onClick={() => onNavigateTab('containers')}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0284C7] hover:text-blue-800 transition-colors cursor-pointer ml-1"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1877F2] hover:text-blue-800 transition-colors cursor-pointer ml-1"
             >
               <span>Container Operations</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -624,101 +655,101 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* Content Grid: 4 Metric Tiles on Left + TEU Movement Bar Chart on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-6 items-stretch">
-          {/* Left Column: 4 Stat Tiles */}
-          <div className="lg:col-span-5 grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-6 items-stretch">
+          {/* Left Column: 4 Stat Tiles in a 4-column horizontal progression */}
+          <div className="lg:col-span-6 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {/* Tile 1: TODAY'S TEUS */}
-            <div className="p-3.5 rounded-xl border border-[#DCE6F1] bg-slate-50/50 flex flex-col justify-between">
+            <div className="p-3 rounded-xl border border-[#DCE6F1] bg-slate-50/50 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[10.5px] font-bold uppercase text-[#6F8198]">
+                <span className="text-[10px] font-bold uppercase text-[#6F8198] truncate">
                   TODAY'S TEUS
                 </span>
-                <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-                  <Box className="w-3.5 h-3.5" />
+                <div className="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
+                  <Box className="w-3 h-3" />
                 </div>
               </div>
               <div className="mt-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-[#102B4E]">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-[#102B4E]">
                     {loading ? '...' : (stats?.todayTeus || 0)}
                   </span>
-                  <span className="text-[10px] font-bold text-emerald-600">
+                  <span className="text-[9.5px] font-bold text-emerald-600">
                     ↑ 0%
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                <p className="text-[9.5px] text-slate-500 font-medium mt-0.5 truncate">
                   vs. Yesterday
                 </p>
               </div>
             </div>
 
             {/* Tile 2: THIS MONTH TEUS */}
-            <div className="p-3.5 rounded-xl border border-[#DCE6F1] bg-slate-50/50 flex flex-col justify-between">
+            <div className="p-3 rounded-xl border border-[#DCE6F1] bg-slate-50/50 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[10.5px] font-bold uppercase text-[#6F8198]">
+                <span className="text-[10px] font-bold uppercase text-[#6F8198] truncate">
                   THIS MONTH TEUS
                 </span>
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
-                  <Ship className="w-3.5 h-3.5" />
+                <div className="w-6 h-6 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                  <Ship className="w-3 h-3" />
                 </div>
               </div>
               <div className="mt-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-[#102B4E]">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-[#102B4E]">
                     {loading ? '...' : (stats?.thisMonthTeus || 0)}
                   </span>
-                  <span className="text-[10px] font-bold text-emerald-600">
+                  <span className="text-[9.5px] font-bold text-emerald-600">
                     ↑ 0%
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                <p className="text-[9.5px] text-slate-500 font-medium mt-0.5 truncate">
                   Current month volume
                 </p>
               </div>
             </div>
 
             {/* Tile 3: ACTIVE IN-YARD TEUS */}
-            <div className="p-3.5 rounded-xl border border-[#DCE6F1] bg-slate-50/50 flex flex-col justify-between">
+            <div className="p-3 rounded-xl border border-[#DCE6F1] bg-slate-50/50 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[10.5px] font-bold uppercase text-[#6F8198]">
+                <span className="text-[10px] font-bold uppercase text-[#6F8198] truncate">
                   ACTIVE IN-YARD TEUS
                 </span>
-                <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
-                  <Truck className="w-3.5 h-3.5" />
+                <div className="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 shrink-0">
+                  <Truck className="w-3 h-3" />
                 </div>
               </div>
               <div className="mt-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-[#102B4E]">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-[#102B4E]">
                     {loading ? '...' : (stats?.activeInYardTeus || 0)}
                   </span>
-                  <span className="text-[10px] font-bold text-emerald-600">
+                  <span className="text-[9.5px] font-bold text-emerald-600">
                     ↑ 0%
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                <p className="text-[9.5px] text-slate-500 font-medium mt-0.5 truncate">
                   Under active operations
                 </p>
               </div>
             </div>
 
             {/* Tile 4: TOTAL RECORDED TEUS */}
-            <div className="p-3.5 rounded-xl border border-[#DCE6F1] bg-slate-50/50 flex flex-col justify-between">
+            <div className="p-3 rounded-xl border border-[#DCE6F1] bg-slate-50/50 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-[10.5px] font-bold uppercase text-[#6F8198]">
+                <span className="text-[10px] font-bold uppercase text-[#6F8198] truncate">
                   TOTAL RECORDED TEUS
                 </span>
-                <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
-                  <Layers className="w-3.5 h-3.5" />
+                <div className="w-6 h-6 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100 shrink-0">
+                  <Layers className="w-3 h-3" />
                 </div>
               </div>
               <div className="mt-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-[#102B4E]">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-[#102B4E]">
                     {loading ? '...' : (stats?.totalRecordedTeus || 0)}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                <p className="text-[9.5px] text-slate-500 font-medium mt-0.5 truncate">
                   Lifetime volume
                 </p>
               </div>
@@ -726,7 +757,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           {/* Right Column: Dual Bar Chart for In-Yard vs Out-Yard */}
-          <div className="lg:col-span-7 flex flex-col justify-between p-4 rounded-xl border border-[#DCE6F1] bg-white">
+          <div className="lg:col-span-6 flex flex-col justify-between p-4 rounded-xl border border-[#DCE6F1] bg-white">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
                 <span className="text-xs font-bold text-[#102B4E]">
@@ -737,7 +768,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span className="w-2.5 h-2.5 rounded-full bg-[#ED1C24]" /> In-Yard
                   </span>
                   <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#062746]" /> Out-Yard
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#3B82F6]" /> Out-Yard
                   </span>
                 </div>
               </div>
@@ -783,13 +814,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         rx="2"
                         className="transition-all hover:opacity-85"
                       />
-                      {/* Out-Yard Bar (Deep Navy) */}
+                      {/* Out-Yard Bar (Bright Royal Blue matching reference) */}
                       <rect
                         x={xBase + 16}
                         y={yOut}
                         width="14"
                         height={hOut}
-                        fill="#062746"
+                        fill="#3B82F6"
                         rx="2"
                         className="transition-all hover:opacity-85"
                       />
