@@ -34,9 +34,9 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
     const origin = window.location.origin;
     const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
     const base = isLocal ? 'https://logistics-rouge-omega.vercel.app' : origin;
-    const verifyUrl = `${base}/verify-bill/${invoice.verificationToken}`;
-    QRCode.toDataURL(verifyUrl, {
-      width: 140,
+    const directPdfUrl = `${base}/bills/${invoice.verificationToken}.pdf`;
+    QRCode.toDataURL(directPdfUrl, {
+      width: 160,
       margin: 1,
       color: { dark: '#0f172a', light: '#ffffff' },
       errorCorrectionLevel: 'M',
@@ -463,7 +463,7 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
               {/* Scan to Verify QR Box */}
               <div className="shrink-0 flex flex-col items-center justify-center p-1.5 bg-slate-50 border border-slate-300 rounded text-center w-24">
                 <span className="text-[7.5px] font-bold text-slate-700 uppercase tracking-tight mb-0.5 leading-tight">
-                  Scan to Verify
+                  Scan to Open Bill
                 </span>
                 {qrDataUrl ? (
                   <img src={qrDataUrl} alt="Verify QR" className="w-16 h-16 object-contain" />

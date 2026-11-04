@@ -51,18 +51,20 @@ const ViewLoadingFallback = () => (
 import { Party, Invoice, BillType } from './types/index';
 
 const MainApp: React.FC = () => {
-  // Support public read-only verification of all bills (Tax Invoice, Empty, HT, Credit Note) via QR code scan
+  // DIRECT QR BILL OPENING: Directly stream and open original bill PDF in native mobile viewer
+  // No Vercel landing page, no verification website, no intermediate portal
   const pathname = window.location.pathname;
   const searchParams = new URLSearchParams(window.location.search);
-  const verifyBillMatch = pathname.match(/^\/verify-bill\/([a-zA-Z0-9_-]+)/) || pathname.match(/^\/verify\/([a-zA-Z0-9_-]+)/);
-  const verifyBillToken = verifyBillMatch ? verifyBillMatch[1] : searchParams.get('verify_bill');
-  const verifyMatch = pathname.match(/^\/verify\/cn\/([a-zA-Z0-9_-]+)/);
-  const verifyHtMatch = pathname.match(/^\/verify\/ht\/([a-zA-Z0-9_-]+)/);
-  const verifyEmptyMatch = pathname.match(/^\/verify\/empty\/([a-zA-Z0-9_-]+)/);
-  const verifyGenericMatch = pathname.match(/^\/verify\/invoice\/([a-zA-Z0-9_-]+)/);
-  const verifyToken = verifyMatch ? verifyMatch[1] : searchParams.get('verify_cn');
-  const verifyHtToken = verifyHtMatch ? verifyHtMatch[1] : (verifyGenericMatch ? verifyGenericMatch[1] : searchParams.get('verify_ht'));
-  const verifyEmptyToken = verifyEmptyMatch ? verifyEmptyMatch[1] : searchParams.get('verify_empty');
+  const directPdfMatch = pathname.match(/^\/(?:bills|bill|verify-bill|verify(?:\/[a-z]+)?)\/([a-zA-Z0-9_.-]+)/);
+  const directBillToken = directPdfMatch
+    ? directPdfMatch[1].replace(/\.pdf$/i, '')
+    : (searchParams.get('token') || searchParams.get('verify_bill') || searchParams.get('verify_cn') || searchParams.get('verify_ht') || searchParams.get('verify_empty'));
+
+  useEffect(() => {
+    if (directBillToken) {
+      window.location.replace(`/api/bills/${directBillToken}`);
+    }
+  }, [directBillToken]);
 
   const { user, loading, logout } = useAuth();
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
@@ -256,33 +258,13 @@ const MainApp: React.FC = () => {
     }
   }, []);
 
-  // Support public read-only verification of all bills (Forwarding, Tax Invoice, Empty, HT, Credit Note) via QR code scan
-  if (verifyBillToken) {
+  // Direct PDF Opening state (replaces location immediately with native PDF resource)
+  if (directBillToken) {
     return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        <BillVerificationPage token={verifyBillToken} />
-      </Suspense>
-    );
-  }
-  if (verifyToken) {
-    return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        <BillVerificationPage token={verifyToken} />
-      </Suspense>
-    );
-  }
-  if (verifyHtToken) {
-    return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        <BillVerificationPage token={verifyHtToken} />
-      </Suspense>
-    );
-  }
-  if (verifyEmptyToken) {
-    return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        <BillVerificationPage token={verifyEmptyToken} />
-      </Suspense>
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-slate-300 text-xs">
+        <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin mb-3" />
+        <span className="font-semibold text-slate-200">Opening MSK Bill PDF...</span>
+      </div>
     );
   }
 

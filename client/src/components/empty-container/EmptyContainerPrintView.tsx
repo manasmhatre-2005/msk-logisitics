@@ -41,7 +41,7 @@ export const EmptyContainerPrintView: React.FC<EmptyContainerPrintViewProps> = (
   const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
   const base = isLocal ? 'https://logistics-rouge-omega.vercel.app' : origin;
   const verifyUrl = verifyToken
-    ? `${base}/verify-bill/${verifyToken}`
+    ? `${base}/bills/${verifyToken}.pdf`
     : `${base}/invoices`;
 
   // Generate QR code
@@ -183,7 +183,7 @@ export const EmptyContainerPrintView: React.FC<EmptyContainerPrintViewProps> = (
         {/* QR Code Verification Box (Left) */}
         <div className="col-span-2 flex flex-col items-center justify-center border border-slate-200 rounded p-1 bg-slate-50/50">
           <span className="text-[7.5px] font-bold text-slate-800 mb-1 uppercase tracking-tight text-center">
-            Scan to Verify
+            Scan to Open Bill
           </span>
           {qrDataUrl ? (
             <img src={qrDataUrl} alt="QR Verification" className="w-14 h-14 object-contain" />

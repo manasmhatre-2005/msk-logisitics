@@ -41,7 +41,7 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
   const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
   const base = isLocal ? 'https://logistics-rouge-omega.vercel.app' : origin;
   const verifyUrl = verifyToken
-    ? `${base}/verify-bill/${verifyToken}`
+    ? `${base}/bills/${verifyToken}.pdf`
     : `${base}/invoices`;
 
   // Generate QR code
@@ -146,7 +146,7 @@ export const CreditNotePrintView: React.FC<CreditNotePrintViewProps> = ({
               {/* QR Code (Col 1-2: Width 16%) */}
               <div className="col-span-2 p-2 flex flex-col items-center justify-center text-center bg-slate-50/50">
                 <span className="text-[8px] font-bold uppercase tracking-wider text-slate-700 leading-tight mb-1">
-                  Scan to Verify Credit Note
+                  Scan to Open Credit Note
                 </span>
                 {qrDataUrl ? (
                   <img

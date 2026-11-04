@@ -4,6 +4,18 @@
   "outputDirectory": "client/dist",
   "rewrites": [
     {
+      "source": "/bills/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/bill/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/verify-bill/(.*)",
+      "destination": "/api"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api"
     },

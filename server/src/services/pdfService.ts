@@ -77,6 +77,33 @@ function drawPageWatermark(doc: any): void {
   }
 }
 
+/**
+ * Draw bold CANCELLED watermark across the PDF page if the bill has been revoked or cancelled
+ */
+function drawCancelledWatermark(doc: any): void {
+  try {
+    const pageWidth = doc.page.width || 595.28;
+    const pageHeight = doc.page.height || 841.89;
+
+    doc.save();
+    doc.rotate(-35, { origin: [pageWidth / 2, pageHeight / 2] });
+    doc.opacity(0.24);
+    doc.font('Helvetica-Bold').fontSize(54).fillColor('#dc2626')
+      .text('CANCELLED / VOID', 0, pageHeight / 2 - 40, {
+        width: pageWidth,
+        align: 'center',
+      });
+    doc.fontSize(14).fillColor('#dc2626')
+      .text('OFFICIALLY REVOKED BY MSK LOGISTIC SOLUTION', 0, pageHeight / 2 + 25, {
+        width: pageWidth,
+        align: 'center',
+      });
+    doc.restore();
+  } catch (err) {
+    console.error('Failed to draw cancelled watermark on PDF:', err);
+  }
+}
+
 export type BillFormatId = 'format-1' | 'format-2' | 'format-3' | 'format-4' | 'format-5';
 
 export interface PDFGenerationOptions {
@@ -154,7 +181,7 @@ export class PDFService {
     const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
     const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
     const verifyUrl = invoice.verificationToken
-      ? `${cleanBaseUrl}/verify-bill/${invoice.verificationToken}`
+      ? `${cleanBaseUrl}/bills/${invoice.verificationToken}.pdf`
       : `${cleanBaseUrl}/invoices`;
 
     let qrBuffer: Buffer | null = null;
@@ -188,6 +215,11 @@ export class PDFService {
       // Draw subtle MSK watermark behind content on initial page and any subsequent pages
       doc.on('pageAdded', () => drawPageWatermark(doc));
       drawPageWatermark(doc);
+
+      if (invoice.status === 'CANCELLED') {
+        doc.on('pageAdded', () => drawCancelledWatermark(doc));
+        drawCancelledWatermark(doc);
+      }
 
       const leftX = 24;
       const contentWidth = 547;
@@ -638,7 +670,7 @@ export class PDFService {
           doc.rect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize).stroke(borderLight);
           doc.image(qrBuffer, qrBoxX + 2, qrBoxY + 2, { width: qrBoxSize - 4, height: qrBoxSize - 4 });
           doc.font('Helvetica-Bold').fontSize(4.8).fillColor(textDark)
-            .text('Scan to Verify Invoice', qrBoxX, qrBoxY + qrBoxSize + 2, { width: qrBoxSize, align: 'center' });
+            .text('Scan to Open Bill PDF', qrBoxX, qrBoxY + qrBoxSize + 2, { width: qrBoxSize, align: 'center' });
           if (invoice.verificationToken) {
             doc.font('Helvetica').fontSize(4.2).fillColor(textMuted)
               .text(`Ref: ${invoice.verificationToken.slice(0, 10).toUpperCase()}`, qrBoxX, qrBoxY + qrBoxSize + 8, { width: qrBoxSize, align: 'center' });
@@ -749,7 +781,7 @@ export class PDFService {
     const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
     const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
     const verifyUrl = invoice.verificationToken
-      ? `${cleanBaseUrl}/verify-bill/${invoice.verificationToken}`
+      ? `${cleanBaseUrl}/bills/${invoice.verificationToken}.pdf`
       : `${cleanBaseUrl}/invoices`;
 
     let qrBuffer: Buffer | null = null;
@@ -787,6 +819,11 @@ export class PDFService {
       doc.on('pageAdded', () => drawPageWatermark(doc));
       drawPageWatermark(doc);
 
+      if (invoice.status === 'CANCELLED') {
+        doc.on('pageAdded', () => drawCancelledWatermark(doc));
+        drawCancelledWatermark(doc);
+      }
+
       const leftX = 24;
       const contentWidth = 547;
       const rightX = leftX + contentWidth; // 571
@@ -811,7 +848,7 @@ export class PDFService {
       const qrBoxWidth = 84;
       doc.rect(leftX, y, qrBoxWidth, headerBoxHeight).stroke(borderLight);
       doc.font('Helvetica-Bold').fontSize(5.2).fillColor(textDark)
-        .text('Scan to Verify Credit Note', leftX + 2, y + 5, { width: qrBoxWidth - 4, align: 'center' });
+        .text('Scan to Open Credit Note', leftX + 2, y + 5, { width: qrBoxWidth - 4, align: 'center' });
 
       if (qrBuffer) {
         try {
@@ -1243,7 +1280,7 @@ export class PDFService {
     const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
     const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
     const verifyUrl = invoice.verificationToken
-      ? `${cleanBaseUrl}/verify-bill/${invoice.verificationToken}`
+      ? `${cleanBaseUrl}/bills/${invoice.verificationToken}.pdf`
       : `${cleanBaseUrl}/invoices`;
 
     let qrBuffer: Buffer | null = null;
@@ -1281,6 +1318,11 @@ export class PDFService {
       doc.on('pageAdded', () => drawPageWatermark(doc));
       drawPageWatermark(doc);
 
+      if (invoice.status === 'CANCELLED') {
+        doc.on('pageAdded', () => drawCancelledWatermark(doc));
+        drawCancelledWatermark(doc);
+      }
+
       const leftX = 22;
       const contentWidth = 551;
       const rightX = leftX + contentWidth; // 573
@@ -1302,7 +1344,7 @@ export class PDFService {
       const qrBoxWidth = 68;
       doc.rect(leftX, y, qrBoxWidth, headerBoxHeight).stroke(borderLight);
       doc.font('Helvetica-Bold').fontSize(5.2).fillColor(textDark)
-        .text('Scan to Verify Empty Bill', leftX + 2, y + 4, { width: qrBoxWidth - 4, align: 'center' });
+        .text('Scan to Open Bill PDF', leftX + 2, y + 4, { width: qrBoxWidth - 4, align: 'center' });
 
       if (qrBuffer) {
         try {
@@ -1787,7 +1829,7 @@ export class PDFService {
     const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
     const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
     const verifyUrl = invoice.verificationToken
-      ? `${cleanBaseUrl}/verify-bill/${invoice.verificationToken}`
+      ? `${cleanBaseUrl}/bills/${invoice.verificationToken}.pdf`
       : `${cleanBaseUrl}/invoices`;
 
     let qrBuffer: Buffer | null = null;
@@ -1825,6 +1867,11 @@ export class PDFService {
       doc.on('pageAdded', () => drawPageWatermark(doc));
       drawPageWatermark(doc);
 
+      if (invoice.status === 'CANCELLED') {
+        doc.on('pageAdded', () => drawCancelledWatermark(doc));
+        drawCancelledWatermark(doc);
+      }
+
       const leftX = 22;
       const contentWidth = 551;
       const rightX = leftX + contentWidth; // 573
@@ -1849,7 +1896,7 @@ export class PDFService {
       const qrBoxWidth = 72;
       doc.rect(leftX, y, qrBoxWidth, headerBoxHeight).stroke(borderLight);
       doc.font('Helvetica-Bold').fontSize(5.2).fillColor(textDark)
-        .text('Scan to Verify Invoice', leftX + 2, y + 4, { width: qrBoxWidth - 4, align: 'center' });
+        .text('Scan to Open Bill PDF', leftX + 2, y + 4, { width: qrBoxWidth - 4, align: 'center' });
 
       if (qrBuffer) {
         try {

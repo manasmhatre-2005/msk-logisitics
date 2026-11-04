@@ -66,8 +66,8 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
     const origin = window.location.origin;
     const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
     const base = isLocal ? 'https://logistics-rouge-omega.vercel.app' : origin;
-    const verifyUrl = `${base}/verify-bill/${invoice.verificationToken}`;
-    QRCode.toDataURL(verifyUrl, {
+    const directPdfUrl = `${base}/bills/${invoice.verificationToken}.pdf`;
+    QRCode.toDataURL(directPdfUrl, {
       width: 140,
       margin: 1,
       color: { dark: '#0f172a', light: '#ffffff' },

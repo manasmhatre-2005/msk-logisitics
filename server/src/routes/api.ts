@@ -35,15 +35,18 @@ router.post('/invoices/calculate', InvoiceController.calculate);
 router.get('/whatsapp/webhook', WhatsAppController.webhookGet);
 router.post('/whatsapp/webhook', WhatsAppController.webhookPost);
 
-// Public Unified Bill Verification & PDF Download (Scan QR to verify & view)
+// Direct Public Bill PDF Opening (Scan QR -> Native Mobile PDF Viewer)
+// Exactly matches requirement: Scan QR -> Original Bill PDF opens directly in phone viewer
+router.get('/bills/:token', InvoiceController.streamDirectBillPdf);
+router.get('/bill/:token', InvoiceController.streamDirectBillPdf);
+router.get('/verify-bill/:token/pdf', InvoiceController.streamDirectBillPdf);
 router.get('/verify-bill/:token', InvoiceController.verifyBill);
-router.get('/verify-bill/:token/pdf', InvoiceController.downloadVerifiedPdf);
 
-// Public Credit Note & Invoice QR Verification (Backward-compatibility routes)
-router.get('/credit-notes/verify/:token', InvoiceController.verifyBill);
-router.get('/invoices/verify/:token', InvoiceController.verifyBill);
-router.get('/ht-bills/verify/:token', InvoiceController.verifyBill);
-router.get('/empty-containers/verify/:token', InvoiceController.verifyBill);
+// Legacy routes -> Stream original bill PDF directly
+router.get('/credit-notes/verify/:token', InvoiceController.streamDirectBillPdf);
+router.get('/invoices/verify/:token', InvoiceController.streamDirectBillPdf);
+router.get('/ht-bills/verify/:token', InvoiceController.streamDirectBillPdf);
+router.get('/empty-containers/verify/:token', InvoiceController.streamDirectBillPdf);
 
 // Authenticated Routes
 router.use(authenticate);

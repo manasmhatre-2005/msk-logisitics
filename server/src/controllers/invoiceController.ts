@@ -834,16 +834,25 @@ export class InvoiceController {
   /**
    * Unified Public Bill Verification Endpoint
    * Works for all bill types: Forwarding, Tax Invoice, Credit Note, H&T Bill, Empty Container Bill
+   * If accessed from a mobile browser (camera QR scan), immediately streams the original PDF directly.
+   * If accessed via JSON API fetch, returns document metadata.
    */
   static async verifyBill(req: Request, res: Response) {
+    // If not an explicit JSON API request, stream the PDF directly into the mobile browser
+    const acceptsJson = req.headers.accept?.includes('application/json');
+    if (!acceptsJson) {
+      return InvoiceController.streamDirectBillPdf(req, res);
+    }
+
     try {
-      const { token } = req.params;
-      if (!token || typeof token !== 'string' || token.trim() === '') {
+      const rawToken = req.params.token;
+      if (!rawToken || typeof rawToken !== 'string' || rawToken.trim() === '') {
         return res.status(400).json({ verified: false, error: 'Verification token is required.' });
       }
+      const token = rawToken.replace(/\.pdf$/i, '').trim();
 
       const invoice = await prisma.invoice.findFirst({
-        where: { verificationToken: token.trim() },
+        where: { verificationToken: token },
         include: {
           party: true,
           exporter: true,
@@ -991,35 +1000,81 @@ export class InvoiceController {
   }
 
   /**
-   * Public PDF Download for Verified QR Bills
+   * Direct Bill PDF Stream for Scannable QR Codes
+   * Mobile phone camera / QR scan opens the original bill PDF directly in native viewer
+   * No intermediate verification portal, no landing page, no login required
    */
-  static async downloadVerifiedPdf(req: Request, res: Response) {
+  static async streamDirectBillPdf(req: Request, res: Response) {
     try {
-      const { token } = req.params;
-      if (!token || typeof token !== 'string') {
-        return res.status(400).json({ error: 'Verification token is required.' });
+      const rawToken = req.params.token;
+      if (!rawToken || typeof rawToken !== 'string') {
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.status(400).send(`
+          <!DOCTYPE html>
+          <html>
+            <head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Bill Not Found</title></head>
+            <body style="font-family:sans-serif;text-align:center;padding:40px 20px;color:#1e293b;">
+              <h2 style="color:#dc2626;">Invalid Bill Link</h2>
+              <p>A verification token is required to open this document.</p>
+            </body>
+          </html>
+        `);
       }
 
+      // Strip .pdf suffix if present in URL path
+      const token = rawToken.replace(/\.pdf$/i, '').trim();
+
       const invoice = await prisma.invoice.findFirst({
-        where: { verificationToken: token.trim() },
-        select: { id: true, invoiceNumber: true },
+        where: { verificationToken: token },
+        select: { id: true, invoiceNumber: true, status: true, billType: true },
       });
 
       if (!invoice) {
-        return res.status(404).json({ error: 'Bill verification link is invalid or unavailable.' });
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.status(404).send(`
+          <!DOCTYPE html>
+          <html>
+            <head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Bill Not Found - MSK Logistic Solution</title></head>
+            <body style="font-family:sans-serif;text-align:center;padding:40px 20px;color:#1e293b;background:#f8fafc;">
+              <div style="max-width:480px;margin:40px auto;background:#ffffff;padding:32px;border-radius:16px;box-shadow:0 10px 25px rgba(0,0,0,0.05);border:1px solid #e2e8f0;">
+                <h2 style="color:#dc2626;margin-top:0;">Bill Not Found</h2>
+                <p style="font-size:14px;color:#64748b;line-height:1.6;">Bill verification link is invalid or unavailable.</p>
+                <p style="font-size:12px;color:#94a3b8;margin-top:20px;">MSK Logistic Solution ERP Document System</p>
+              </div>
+            </body>
+          </html>
+        `);
       }
 
+      // Generate the exact original PDF for this bill
       const pdfBuffer = await PDFService.generateInvoicePDF(invoice.id);
-      const safeInvoiceNumber = invoice.invoiceNumber.replace(/[/\\?%*:|"<>]/g, '_');
+      const safeInvoiceNumber = (invoice.invoiceNumber || 'MSK_Bill').replace(/[/\\?%*:|"<>]/g, '_');
 
       res.setHeader('Content-Type', 'application/pdf');
+      // 'inline' disposition instructs mobile Safari / Chrome to open the PDF viewer directly
       res.setHeader('Content-Disposition', `inline; filename="${safeInvoiceNumber}.pdf"`);
       res.setHeader('Content-Length', pdfBuffer.length);
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      res.setHeader('Accept-Ranges', 'bytes');
       return res.send(pdfBuffer);
     } catch (err: any) {
-      console.error('Error generating verified PDF download:', err);
-      return res.status(500).json({ error: 'Failed to generate verified bill PDF.' });
+      console.error('Error streaming direct bill PDF:', err);
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(500).send(`
+        <!DOCTYPE html>
+        <html>
+          <head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Error Opening Bill</title></head>
+          <body style="font-family:sans-serif;text-align:center;padding:40px 20px;color:#1e293b;">
+            <h2 style="color:#dc2626;">Error Opening Bill</h2>
+            <p>An unexpected server error occurred while rendering the bill PDF. Please try again.</p>
+          </body>
+        </html>
+      `);
     }
+  }
+
+  static async downloadVerifiedPdf(req: Request, res: Response) {
+    return InvoiceController.streamDirectBillPdf(req, res);
   }
 
   static async verifyCreditNote(req: Request, res: Response) {
