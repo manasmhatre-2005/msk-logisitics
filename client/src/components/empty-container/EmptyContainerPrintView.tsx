@@ -37,10 +37,12 @@ export const EmptyContainerPrintView: React.FC<EmptyContainerPrintViewProps> = (
 
   // Construct verification URL
   const verifyToken = invoice.verificationToken;
-  const baseUrl = window.location.origin;
+  const origin = window.location.origin;
+  const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+  const base = isLocal ? 'https://logistics-rouge-omega.vercel.app' : origin;
   const verifyUrl = verifyToken
-    ? `${baseUrl}/verify/empty/${verifyToken}`
-    : `${baseUrl}/invoices`;
+    ? `${base}/verify-bill/${verifyToken}`
+    : `${base}/invoices`;
 
   // Generate QR code
   useEffect(() => {

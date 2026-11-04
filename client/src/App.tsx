@@ -19,6 +19,7 @@ const ContainersPage = lazy(() => import('./pages/ContainersPage').then((m) => (
 const ChargesPage = lazy(() => import('./pages/ChargesPage').then((m) => ({ default: m.ChargesPage })));
 const InvoicesPage = lazy(() => import('./pages/InvoicesPage').then((m) => ({ default: m.InvoicesPage })));
 const InvoiceDetailPage = lazy(() => import('./pages/InvoiceDetailPage').then((m) => ({ default: m.InvoiceDetailPage })));
+const BillVerificationPage = lazy(() => import('./pages/BillVerificationPage').then((m) => ({ default: m.BillVerificationPage })));
 const CreditNoteVerificationPage = lazy(() => import('./pages/CreditNoteVerificationPage').then((m) => ({ default: m.CreditNoteVerificationPage })));
 const HtBillVerificationPage = lazy(() => import('./pages/HtBillVerificationPage').then((m) => ({ default: m.HtBillVerificationPage })));
 const EmptyContainerVerificationPage = lazy(() => import('./pages/EmptyContainerVerificationPage').then((m) => ({ default: m.EmptyContainerVerificationPage })));
@@ -50,9 +51,11 @@ const ViewLoadingFallback = () => (
 import { Party, Invoice, BillType } from './types/index';
 
 const MainApp: React.FC = () => {
-  // Support public read-only verification of Credit Notes & H & T Bills via QR code scan
+  // Support public read-only verification of all bills (Tax Invoice, Empty, HT, Credit Note) via QR code scan
   const pathname = window.location.pathname;
   const searchParams = new URLSearchParams(window.location.search);
+  const verifyBillMatch = pathname.match(/^\/verify-bill\/([a-zA-Z0-9_-]+)/) || pathname.match(/^\/verify\/([a-zA-Z0-9_-]+)/);
+  const verifyBillToken = verifyBillMatch ? verifyBillMatch[1] : searchParams.get('verify_bill');
   const verifyMatch = pathname.match(/^\/verify\/cn\/([a-zA-Z0-9_-]+)/);
   const verifyHtMatch = pathname.match(/^\/verify\/ht\/([a-zA-Z0-9_-]+)/);
   const verifyEmptyMatch = pathname.match(/^\/verify\/empty\/([a-zA-Z0-9_-]+)/);
@@ -253,25 +256,32 @@ const MainApp: React.FC = () => {
     }
   }, []);
 
-  // Support public read-only verification of Credit Notes & H & T Bills via QR code scan
+  // Support public read-only verification of all bills (Forwarding, Tax Invoice, Empty, HT, Credit Note) via QR code scan
+  if (verifyBillToken) {
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <BillVerificationPage token={verifyBillToken} />
+      </Suspense>
+    );
+  }
   if (verifyToken) {
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
-        <CreditNoteVerificationPage token={verifyToken} />
+        <BillVerificationPage token={verifyToken} />
       </Suspense>
     );
   }
   if (verifyHtToken) {
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
-        <HtBillVerificationPage token={verifyHtToken} />
+        <BillVerificationPage token={verifyHtToken} />
       </Suspense>
     );
   }
   if (verifyEmptyToken) {
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
-        <EmptyContainerVerificationPage token={verifyEmptyToken} />
+        <BillVerificationPage token={verifyEmptyToken} />
       </Suspense>
     );
   }

@@ -831,28 +831,37 @@ export class InvoiceController {
     }
   }
 
-  static async verifyCreditNote(req: Request, res: Response) {
+  /**
+   * Unified Public Bill Verification Endpoint
+   * Works for all bill types: Forwarding, Tax Invoice, Credit Note, H&T Bill, Empty Container Bill
+   */
+  static async verifyBill(req: Request, res: Response) {
     try {
       const { token } = req.params;
-      if (!token) {
+      if (!token || typeof token !== 'string' || token.trim() === '') {
         return res.status(400).json({ verified: false, error: 'Verification token is required.' });
       }
 
       const invoice = await prisma.invoice.findFirst({
-        where: { verificationToken: token },
+        where: { verificationToken: token.trim() },
         include: {
           party: true,
+          exporter: true,
+          job: true,
+          containers: {
+            include: { container: true },
+            orderBy: { containerNumber: 'asc' },
+          },
           items: {
             orderBy: { srNo: 'asc' },
           },
-          containers: true,
         },
       });
 
       if (!invoice) {
         return res.status(404).json({
           verified: false,
-          error: 'Credit Note record not found or verification token is invalid.',
+          error: 'Bill verification link is invalid or unavailable.',
         });
       }
 
@@ -861,21 +870,16 @@ export class InvoiceController {
       return res.json({
         verified: true,
         id: invoice.id,
-        creditNoteNumber: invoice.invoiceNumber,
-        issueDate: invoice.invoiceDate,
-        originalInvoiceNumber: invoice.originalInvoiceNumber,
-        originalInvoiceDate: invoice.originalInvoiceDate,
-        partyName: invoice.billToName,
-        partyGstin: invoice.billToGstin,
-        partyAddress: invoice.billToAddress,
-        partyState: invoice.billToState,
-        partyStateCode: invoice.billToStateCode,
-        vesselVoyage: invoice.vesselVoyage,
-        mblHbl: invoice.mblHbl,
-        portOfLoading: invoice.portOfLoading,
-        portOfDischarge: invoice.portOfDischarge,
-        reasonForCredit: invoice.reasonForCredit,
+        verificationToken: invoice.verificationToken,
+        invoiceNumber: invoice.invoiceNumber,
+        billType: invoice.billType || 'FORWARDING',
+        templateId: (invoice as any).templateId || 'format-1',
+        invoiceDate: invoice.invoiceDate,
+        dueDate: invoice.dueDate,
+        status: invoice.status,
+        currency: invoice.currency || 'INR',
         taxableAmount: invoice.taxableAmount,
+        subTotal: invoice.subtotal,
         cgstRate: invoice.cgstRate,
         cgstAmount: invoice.cgstAmount,
         sgstRate: invoice.sgstRate,
@@ -883,87 +887,77 @@ export class InvoiceController {
         igstRate: invoice.igstRate,
         igstAmount: invoice.igstAmount,
         totalGst: invoice.totalGst,
-        totalCreditValue: invoice.grandTotal,
         grandTotal: invoice.grandTotal,
+        totalAmount: invoice.grandTotal,
+        paidAmount: invoice.paidAmount,
+        balanceAmount: invoice.balanceAmount,
         amountInWords: invoice.amountInWords,
-        currency: invoice.currency,
-        status: invoice.status,
-        company: {
-          name: settings?.companyName || 'MSK LOGISTIC SOLUTION',
-          gstin: settings?.gstin || '27AXWPK4562G1ZX',
-          city: settings?.city || 'Navi Mumbai',
-        },
-        companyName: settings?.companyName || 'MSK LOGISTIC SOLUTION',
-        companyGstin: settings?.gstin || '27AXWPK4562G1ZX',
-        companyPan: settings?.pan || 'AXWPK4562G',
-        companyAddress: settings?.address || 'JNPT Township Colony, Sector - 3, Building No. B/48, Office No. 3, Navi Mumbai - 400702',
-        companyPhone: settings?.phone || '+91 8104592823',
-        companyEmail: settings?.email || 'accounts@msklogisticsolution.com',
-        verificationTimestamp: new Date().toISOString(),
-        verifiedAt: new Date().toISOString(),
-      });
-    } catch (err: any) {
-      return res.status(500).json({ verified: false, error: err.message });
-    }
-  }
-
-  static async verifyInvoice(req: Request, res: Response) {
-    try {
-      const { token } = req.params;
-      if (!token) {
-        return res.status(400).json({ verified: false, error: 'Verification token is required.' });
-      }
-
-      const invoice = await prisma.invoice.findFirst({
-        where: { verificationToken: token },
-        include: {
-          party: true,
-          items: {
-            orderBy: { srNo: 'asc' },
-          },
-          containers: true,
-        },
-      });
-
-      if (!invoice) {
-        return res.status(404).json({
-          verified: false,
-          error: 'Invoice record not found or verification token is invalid.',
-        });
-      }
-
-      const settings = await prisma.companySettings.findUnique({ where: { id: 'default' } });
-
-      return res.json({
-        verified: true,
-        id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber,
-        billType: invoice.billType || 'HT_BILL',
-        invoiceDate: invoice.invoiceDate,
-        partyName: invoice.billToName,
-        partyGstin: invoice.billToGstin,
-        partyAddress: invoice.billToAddress,
-        partyState: invoice.billToState,
-        partyStateCode: invoice.billToStateCode,
+        isInterState: invoice.isInterState,
+        discountAmount: invoice.discountAmount,
+        terms: invoice.terms,
+        notes: invoice.notes,
+        // Maritime / Consignment Details
         vesselVoyage: invoice.vesselVoyage,
         mblHbl: invoice.mblHbl,
         portOfLoading: invoice.portOfLoading,
         portOfDischarge: invoice.portOfDischarge,
+        // Credit note specific
+        originalInvoiceNumber: invoice.originalInvoiceNumber,
+        originalInvoiceDate: invoice.originalInvoiceDate,
+        reasonForCredit: invoice.reasonForCredit,
+        // Billed To / Recipient Details
+        billToName: invoice.billToName || invoice.party?.legalName || 'N/A',
+        billToGstin: invoice.billToGstin || invoice.party?.gstin || 'URP',
+        billToAddress: invoice.billToAddress || invoice.party?.registeredAddress || '',
+        billToState: invoice.billToState || invoice.party?.state || 'Maharashtra',
+        billToStateCode: invoice.billToStateCode || invoice.party?.stateCode || '27',
+        // Associated entities
+        party: invoice.party ? {
+          id: invoice.party.id,
+          legalName: invoice.party.legalName,
+          tradeName: invoice.party.tradeName,
+          gstin: invoice.party.gstin,
+          pan: (invoice.party as any).pan || (invoice.party.gstin && invoice.party.gstin.length >= 12 ? invoice.party.gstin.slice(2, 12) : null),
+          address: invoice.party.registeredAddress,
+          state: invoice.party.state,
+          stateCode: invoice.party.stateCode,
+          contactPerson: invoice.party.contactPerson,
+          mobile: invoice.party.mobile,
+          email: invoice.party.email,
+        } : null,
+        exporter: invoice.exporter ? {
+          id: invoice.exporter.id,
+          name: invoice.exporter.name,
+          iec: invoice.exporter.iecCode,
+          gstin: invoice.exporter.gstin,
+          address: invoice.exporter.address,
+        } : null,
+        job: invoice.job ? {
+          id: invoice.job.id,
+          jobNumber: invoice.job.jobNumber,
+          customJobNumber: invoice.job.jobNumber,
+          shippingBillNumber: invoice.job.sbNumber,
+          blNumber: invoice.job.shipmentRef,
+          shippingLine: invoice.job.bookingDetails,
+        } : null,
         containersCount: invoice.containers.length,
         itemsCount: invoice.items.length,
         containers: invoice.containers.map((c) => ({
+          id: c.id,
           containerNumber: c.containerNumber,
           size: c.size,
           type: c.type,
+          sealNumber: (c as any).sealNumber || null,
+          cartingDate: c.cartingDate,
           emptyGateInDate: c.emptyGateInDate,
           stuffingDate: c.stuffingDate,
-          cartingDate: c.cartingDate,
           lddOutDate: c.lddOutDate,
           emptyGroundDays: c.emptyGroundDays,
           daysAfterCarting: c.daysAfterCarting,
           loadedGroundDays: c.loadedGroundDays,
         })),
         items: invoice.items.map((i) => ({
+          id: i.id,
           srNo: i.srNo,
           description: i.description,
           hsnSacCode: i.hsnSacCode,
@@ -971,34 +965,68 @@ export class InvoiceController {
           quantity: i.quantity,
           taxableValue: i.taxableValue,
         })),
-        taxableAmount: invoice.taxableAmount,
-        cgstRate: invoice.cgstRate,
-        cgstAmount: invoice.cgstAmount,
-        sgstRate: invoice.sgstRate,
-        sgstAmount: invoice.sgstAmount,
-        igstRate: invoice.igstRate,
-        igstAmount: invoice.igstAmount,
-        totalGst: invoice.totalGst,
-        grandTotal: invoice.grandTotal,
-        amountInWords: invoice.amountInWords,
-        currency: invoice.currency,
-        status: invoice.status,
         company: {
           name: settings?.companyName || 'MSK LOGISTIC SOLUTION',
           gstin: settings?.gstin || '27AXWPK4562G1ZX',
+          pan: settings?.pan || 'AXWPK4562G',
+          tan: settings?.tan || 'PNES72845D',
+          address: settings?.address || 'JNPT Township Colony, Sector - 3, Building No. B/48, Office No. 3, Navi Mumbai - 400702',
           city: settings?.city || 'Navi Mumbai',
+          pincode: settings?.pincode || '400702',
+          phone: settings?.phone || '+91 8104592823',
+          email: settings?.email || 'accounts@msklogisticsolution.com',
+          website: settings?.website || 'www.msklogisticsolution.com',
+          bankName: settings?.bankName || 'ICICI Bank',
+          bankAccountName: settings?.bankAccountName || 'MSK LOGISTIC SOLUTION',
+          bankAccountNo: settings?.bankAccountNo || '574005000006',
+          bankBranch: settings?.bankBranch || 'Dronagiri Node (Nhava Sheva)',
+          bankIfsc: settings?.bankIfsc || 'ICIC0005740',
         },
-        companyName: settings?.companyName || 'MSK LOGISTIC SOLUTION',
-        companyGstin: settings?.gstin || '27AXWPK4562G1ZX',
-        companyPan: settings?.pan || 'AXWPK4562G',
-        companyAddress: settings?.address || 'JNPT Township Colony, Sector - 3, Building No. B/48, Office No. 3, Navi Mumbai - 400702',
-        companyPhone: settings?.phone || '+91 8104592823',
-        companyEmail: settings?.email || 'accounts@msklogisticsolution.com',
-        verificationTimestamp: new Date().toISOString(),
         verifiedAt: new Date().toISOString(),
       });
     } catch (err: any) {
-      return res.status(500).json({ verified: false, error: err.message });
+      console.error('Bill verification error:', err);
+      return res.status(500).json({ verified: false, error: 'Internal verification service error.' });
     }
+  }
+
+  /**
+   * Public PDF Download for Verified QR Bills
+   */
+  static async downloadVerifiedPdf(req: Request, res: Response) {
+    try {
+      const { token } = req.params;
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ error: 'Verification token is required.' });
+      }
+
+      const invoice = await prisma.invoice.findFirst({
+        where: { verificationToken: token.trim() },
+        select: { id: true, invoiceNumber: true },
+      });
+
+      if (!invoice) {
+        return res.status(404).json({ error: 'Bill verification link is invalid or unavailable.' });
+      }
+
+      const pdfBuffer = await PDFService.generateInvoicePDF(invoice.id);
+      const safeInvoiceNumber = invoice.invoiceNumber.replace(/[/\\?%*:|"<>]/g, '_');
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${safeInvoiceNumber}.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      return res.send(pdfBuffer);
+    } catch (err: any) {
+      console.error('Error generating verified PDF download:', err);
+      return res.status(500).json({ error: 'Failed to generate verified bill PDF.' });
+    }
+  }
+
+  static async verifyCreditNote(req: Request, res: Response) {
+    return InvoiceController.verifyBill(req, res);
+  }
+
+  static async verifyInvoice(req: Request, res: Response) {
+    return InvoiceController.verifyBill(req, res);
   }
 }

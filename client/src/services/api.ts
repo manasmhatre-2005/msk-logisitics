@@ -295,6 +295,31 @@ export const api = {
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   },
+  // Unified Bill Verification API (Scannable QR Verification)
+  verifyBill: (token: string) => request<any>(`/verify-bill/${token}`),
+  downloadVerifiedBillPdf: async (token: string, invoiceNumber?: string) => {
+    const res = await fetch(`/api/verify-bill/${token}/pdf`);
+    if (!res.ok) {
+      let errMessage = 'Failed to download verified bill PDF.';
+      try {
+        const data = await res.json();
+        if (data.error) errMessage = data.error;
+      } catch {
+        // ignore
+      }
+      throw new Error(errMessage);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const safeNumber = (invoiceNumber || 'MSK_Bill').replace(/[/\\?%*:|"<>]/g, '_');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeNumber}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  },
   verifyCreditNote: (token: string) => request<any>(`/credit-notes/verify/${token}`),
   verifyInvoice: (token: string) => request<any>(`/invoices/verify/${token}`),
   verifyHtBill: (token: string) => request<any>(`/invoices/verify/${token}`),

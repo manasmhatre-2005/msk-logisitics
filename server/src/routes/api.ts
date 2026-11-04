@@ -35,11 +35,15 @@ router.post('/invoices/calculate', InvoiceController.calculate);
 router.get('/whatsapp/webhook', WhatsAppController.webhookGet);
 router.post('/whatsapp/webhook', WhatsAppController.webhookPost);
 
-// Public Credit Note & Invoice QR Verification (Scan QR to verify)
-router.get('/credit-notes/verify/:token', InvoiceController.verifyCreditNote);
-router.get('/invoices/verify/:token', InvoiceController.verifyInvoice);
-router.get('/ht-bills/verify/:token', InvoiceController.verifyInvoice);
-router.get('/empty-containers/verify/:token', InvoiceController.verifyInvoice);
+// Public Unified Bill Verification & PDF Download (Scan QR to verify & view)
+router.get('/verify-bill/:token', InvoiceController.verifyBill);
+router.get('/verify-bill/:token/pdf', InvoiceController.downloadVerifiedPdf);
+
+// Public Credit Note & Invoice QR Verification (Backward-compatibility routes)
+router.get('/credit-notes/verify/:token', InvoiceController.verifyBill);
+router.get('/invoices/verify/:token', InvoiceController.verifyBill);
+router.get('/ht-bills/verify/:token', InvoiceController.verifyBill);
+router.get('/empty-containers/verify/:token', InvoiceController.verifyBill);
 
 // Authenticated Routes
 router.use(authenticate);

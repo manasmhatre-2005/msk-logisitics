@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
+import crypto from 'crypto';
 import prisma from '../prisma.js';
 import fs from 'fs';
 import path from 'path';
@@ -135,6 +136,37 @@ export class PDFService {
     } else if (invoice.notes && invoice.notes.includes('[TEMPLATE:')) {
       const match = invoice.notes.match(/\[TEMPLATE:(format-[1-5])\]/);
       if (match) templateId = match[1] as BillFormatId;
+    }
+
+    if (!invoice.verificationToken && invoice.id) {
+      try {
+        const token = 'vfy_' + crypto.randomBytes(16).toString('hex');
+        await prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { verificationToken: token },
+        });
+        invoice.verificationToken = token;
+      } catch (e) {
+        // continue
+      }
+    }
+
+    const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
+    const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
+    const verifyUrl = invoice.verificationToken
+      ? `${cleanBaseUrl}/verify-bill/${invoice.verificationToken}`
+      : `${cleanBaseUrl}/invoices`;
+
+    let qrBuffer: Buffer | null = null;
+    try {
+      qrBuffer = await QRCode.toBuffer(verifyUrl, {
+        width: 140,
+        margin: 1,
+        color: { dark: '#0f172a', light: '#ffffff' },
+        errorCorrectionLevel: 'M',
+      });
+    } catch (e) {
+      console.error('Failed to generate QR buffer for Tax Invoice PDF:', e);
     }
 
     return new Promise<Buffer>((resolve, reject) => {
@@ -566,9 +598,9 @@ export class PDFService {
       doc.font('Helvetica-Bold').fontSize(7.5).fillColor(textDark)
         .text('OUR BANKING DETAILS:', leftPadX, bankTopY);
 
-      const bankLabelW = 78;
+      const bankLabelW = 68;
       const bankValX = leftPadX + bankLabelW;
-      const bankValW = leftInnerWidth - bankLabelW;
+      const bankValW = 158;
       let by = bankTopY + 12;
       const bankLineGap = 12;
 
@@ -595,6 +627,26 @@ export class PDFService {
       // Line 5: IFSC Code
       doc.font('Helvetica').fontSize(7).text('IFSC Code :', leftPadX, by);
       doc.font('Helvetica-Bold').fontSize(7).text(settings?.bankIfsc || 'ICIC0005740', bankValX, by, { width: bankValW });
+
+      // Scan to Verify QR Code inside Banking Section
+      const qrBoxSize = 62;
+      const qrBoxX = bottomSplitX - qrBoxSize - 8;
+      const qrBoxY = bankTopY;
+
+      if (qrBuffer) {
+        try {
+          doc.rect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize).stroke(borderLight);
+          doc.image(qrBuffer, qrBoxX + 2, qrBoxY + 2, { width: qrBoxSize - 4, height: qrBoxSize - 4 });
+          doc.font('Helvetica-Bold').fontSize(4.8).fillColor(textDark)
+            .text('Scan to Verify Invoice', qrBoxX, qrBoxY + qrBoxSize + 2, { width: qrBoxSize, align: 'center' });
+          if (invoice.verificationToken) {
+            doc.font('Helvetica').fontSize(4.2).fillColor(textMuted)
+              .text(`Ref: ${invoice.verificationToken.slice(0, 10).toUpperCase()}`, qrBoxX, qrBoxY + qrBoxSize + 8, { width: qrBoxSize, align: 'center' });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
 
       // --- RIGHT SIDE: Tax Summary & Authorized Signatory ---
       const rightPadX = bottomSplitX + 8;
@@ -695,9 +747,10 @@ export class PDFService {
    */
   static async generateCreditNotePDF(invoice: any, settings: any): Promise<Buffer> {
     const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
+    const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
     const verifyUrl = invoice.verificationToken
-      ? `${baseUrl}/verify/cn/${invoice.verificationToken}`
-      : `${baseUrl}/invoices`;
+      ? `${cleanBaseUrl}/verify-bill/${invoice.verificationToken}`
+      : `${cleanBaseUrl}/invoices`;
 
     let qrBuffer: Buffer | null = null;
     try {
@@ -1188,9 +1241,10 @@ export class PDFService {
    */
   static async generateEmptyContainerPDF(invoice: any, settings: any): Promise<Buffer> {
     const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
+    const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
     const verifyUrl = invoice.verificationToken
-      ? `${baseUrl}/verify/empty/${invoice.verificationToken}`
-      : `${baseUrl}/invoices`;
+      ? `${cleanBaseUrl}/verify-bill/${invoice.verificationToken}`
+      : `${cleanBaseUrl}/invoices`;
 
     let qrBuffer: Buffer | null = null;
     try {
@@ -1731,9 +1785,10 @@ export class PDFService {
    */
   static async generateHtBillPDF(invoice: any, settings: any): Promise<Buffer> {
     const baseUrl = process.env.APP_URL || process.env.CLIENT_URL || 'https://logistics-rouge-omega.vercel.app';
+    const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
     const verifyUrl = invoice.verificationToken
-      ? `${baseUrl}/verify/ht/${invoice.verificationToken}`
-      : `${baseUrl}/invoices`;
+      ? `${cleanBaseUrl}/verify-bill/${invoice.verificationToken}`
+      : `${cleanBaseUrl}/invoices`;
 
     let qrBuffer: Buffer | null = null;
     try {

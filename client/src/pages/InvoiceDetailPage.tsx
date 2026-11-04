@@ -63,11 +63,10 @@ export const InvoiceDetailPage: React.FC<InvoiceDetailPageProps> = ({
 
   useEffect(() => {
     if (!invoice?.verificationToken) return;
-    const baseUrl = window.location.origin;
-    let verifyPrefix = 'empty';
-    if (invoice.billType === 'HT_BILL') verifyPrefix = 'ht';
-    else if (invoice.billType === 'CREDIT_NOTE') verifyPrefix = 'cn';
-    const verifyUrl = `${baseUrl}/verify/${verifyPrefix}/${invoice.verificationToken}`;
+    const origin = window.location.origin;
+    const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+    const base = isLocal ? 'https://logistics-rouge-omega.vercel.app' : origin;
+    const verifyUrl = `${base}/verify-bill/${invoice.verificationToken}`;
     QRCode.toDataURL(verifyUrl, {
       width: 140,
       margin: 1,

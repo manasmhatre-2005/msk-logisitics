@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import QRCode from 'qrcode';
 import { Invoice, CompanySettings } from '../../types/index';
 import { Printer, Download, Mail, X, ShieldCheck } from 'lucide-react';
 import { api } from '../../services/api';
@@ -11,28 +12,45 @@ import { InvoiceWatermark } from '../common/InvoiceWatermark';
 
 interface InvoicePrintViewProps {
   invoice: Invoice;
-  onClose: () => void;
+  onClose?: () => void;
+  displayMode?: 'modal' | 'inline';
 }
 
 export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
   invoice,
-  onClose,
+  onClose = () => {},
+  displayMode = 'modal',
 }) => {
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   useEffect(() => {
     api.getSettings().then(setSettings).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!invoice.verificationToken) return;
+    const origin = window.location.origin;
+    const isLocal = origin.includes('localhost') || origin.includes('127.0.0.1');
+    const base = isLocal ? 'https://logistics-rouge-omega.vercel.app' : origin;
+    const verifyUrl = `${base}/verify-bill/${invoice.verificationToken}`;
+    QRCode.toDataURL(verifyUrl, {
+      width: 140,
+      margin: 1,
+      color: { dark: '#0f172a', light: '#ffffff' },
+      errorCorrectionLevel: 'M',
+    }).then(setQrDataUrl).catch(() => {});
+  }, [invoice.verificationToken]);
+
   if (invoice.billType === 'EMPTY_CONTAINER') {
-    return <EmptyContainerPrintView invoice={invoice} isOpen={true} onClose={onClose} companySettings={settings} />;
+    return <EmptyContainerPrintView invoice={invoice} isOpen={true} onClose={onClose} companySettings={settings} displayMode={displayMode} />;
   }
   if (invoice.billType === 'HT_BILL') {
-    return <HtBillPrintView invoice={invoice} isOpen={true} onClose={onClose} companySettings={settings} />;
+    return <HtBillPrintView invoice={invoice} isOpen={true} onClose={onClose} companySettings={settings} displayMode={displayMode} />;
   }
   if (invoice.billType === 'CREDIT_NOTE') {
-    return <CreditNotePrintView invoice={invoice} isOpen={true} onClose={onClose} />;
+    return <CreditNotePrintView invoice={invoice} isOpen={true} onClose={onClose} displayMode={displayMode} />;
   }
 
   const formatDate = (dateVal: string | Date | undefined | null) => {
@@ -90,9 +108,11 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
     }
   };
 
+  const isInline = displayMode === 'inline';
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex justify-center p-0 sm:p-4 print:p-0 print:bg-white print:static">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-none sm:rounded-2xl w-full max-w-5xl h-full sm:h-[94vh] flex flex-col shadow-2xl overflow-hidden print:border-none print:shadow-none print:h-auto print:w-full">
+    <div className={isInline ? 'w-full max-w-5xl my-0 flex flex-col rounded-2xl overflow-hidden border border-slate-700 bg-slate-900 shadow-2xl print:border-none print:shadow-none print:w-full' : 'fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex justify-center p-0 sm:p-4 print:p-0 print:bg-white print:static'}>
+      <div className={isInline ? 'bg-slate-900 w-full flex flex-col overflow-hidden print:border-none print:shadow-none print:h-auto print:w-full' : 'bg-slate-900 border border-slate-700/80 rounded-none sm:rounded-2xl w-full max-w-5xl h-full sm:h-[94vh] flex flex-col shadow-2xl overflow-hidden print:border-none print:shadow-none print:h-auto print:w-full'}>
         {/* Top Control Bar - Sticky & Responsive */}
         <div className="bg-slate-900/95 border-b border-slate-800 px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2 no-print sticky top-0 z-10 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-2 sm:gap-3">
@@ -417,25 +437,42 @@ export const InvoicePrintView: React.FC<InvoicePrintViewProps> = ({
               </p>
             </div>
 
-            <div className="border-t border-slate-300 pt-1.5 space-y-0.5 text-[10px]">
-              <p className="font-black text-slate-900 uppercase tracking-wide">
-                OUR BANKING DETAILS:
-              </p>
-              <div className="grid grid-cols-12 gap-0.5">
-                <span className="col-span-4 text-slate-700">Company name :</span>
-                <span className="col-span-8 font-bold text-slate-900">{bankAccountName}</span>
+            <div className="border-t border-slate-300 pt-1.5 flex items-start justify-between gap-2 text-[10px]">
+              <div className="flex-1 space-y-0.5">
+                <p className="font-black text-slate-900 uppercase tracking-wide">
+                  OUR BANKING DETAILS:
+                </p>
+                <div className="grid grid-cols-12 gap-0.5">
+                  <span className="col-span-4 text-slate-700">Company name :</span>
+                  <span className="col-span-8 font-bold text-slate-900">{bankAccountName}</span>
 
-                <span className="col-span-4 text-slate-700">A/C Number :</span>
-                <span className="col-span-8 font-mono font-bold text-slate-900">{bankAccountNo}</span>
+                  <span className="col-span-4 text-slate-700">A/C Number :</span>
+                  <span className="col-span-8 font-mono font-bold text-slate-900">{bankAccountNo}</span>
 
-                <span className="col-span-4 text-slate-700">Bank Name :</span>
-                <span className="col-span-8 font-bold text-slate-900">{bankName}</span>
+                  <span className="col-span-4 text-slate-700">Bank Name :</span>
+                  <span className="col-span-8 font-bold text-slate-900">{bankName}</span>
 
-                <span className="col-span-4 text-slate-700">Branch Name :</span>
-                <span className="col-span-8 text-slate-800">{bankBranch}</span>
+                  <span className="col-span-4 text-slate-700">Branch Name :</span>
+                  <span className="col-span-8 text-slate-800">{bankBranch}</span>
 
-                <span className="col-span-4 text-slate-700">IFSC Code :</span>
-                <span className="col-span-8 font-mono font-bold text-slate-900">{bankIfsc}</span>
+                  <span className="col-span-4 text-slate-700">IFSC Code :</span>
+                  <span className="col-span-8 font-mono font-bold text-slate-900">{bankIfsc}</span>
+                </div>
+              </div>
+
+              {/* Scan to Verify QR Box */}
+              <div className="shrink-0 flex flex-col items-center justify-center p-1.5 bg-slate-50 border border-slate-300 rounded text-center w-24">
+                <span className="text-[7.5px] font-bold text-slate-700 uppercase tracking-tight mb-0.5 leading-tight">
+                  Scan to Verify
+                </span>
+                {qrDataUrl ? (
+                  <img src={qrDataUrl} alt="Verify QR" className="w-16 h-16 object-contain" />
+                ) : (
+                  <div className="w-16 h-16 bg-slate-200 animate-pulse rounded" />
+                )}
+                <span className="text-[6.5px] font-mono text-slate-500 mt-0.5">
+                  Ref: {invoice.verificationToken ? invoice.verificationToken.slice(0, 8).toUpperCase() : 'VERIFIED'}
+                </span>
               </div>
             </div>
           </div>
