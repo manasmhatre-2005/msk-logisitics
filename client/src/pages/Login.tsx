@@ -59,26 +59,28 @@ export const Login: React.FC<LoginProps> = ({ onSuccess, logoutMessage, onClearL
       style={{ backgroundImage: "url('/images/login-page-backdrop.png')" }}
     >
       {/* Unified Master Sign-In Card (Centered, Scale-Independent) */}
-      <div className="w-full max-w-[1000px] xl:max-w-[1080px] 2xl:max-w-[1140px] bg-white rounded-2xl sm:rounded-3xl lg:rounded-[32px] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.18)] border border-slate-100 flex flex-col lg:flex-row overflow-hidden relative z-10 my-auto">
-        {/* Left Half: Branding & Logistics Hero Section */}
-        <div className="w-full lg:w-[55%] relative overflow-hidden bg-white flex items-center justify-center">
-          <img
-            src="/images/login-card-left-panel.png"
-            alt="MSK Logistic Solution - Integrated Logistics Management ERP. Management, Invoicing & Container Operations"
-            loading="eager"
-            decoding="async"
-            className="w-full h-auto lg:h-full max-h-[300px] sm:max-h-[380px] lg:max-h-none object-contain lg:object-cover object-center"
-          />
-          <h1 className="sr-only">
-            MSK Logistic Solution - Integrated Logistics Management ERP
-          </h1>
-          <p className="sr-only">
-            Management, Invoicing & Container Operations
-          </p>
+      <div className="w-full max-w-[1140px] xl:max-w-[1240px] 2xl:max-w-[1300px] bg-white rounded-2xl sm:rounded-3xl lg:rounded-[32px] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.16)] border border-slate-200/90 flex flex-col lg:flex-row overflow-hidden relative z-10 my-auto items-stretch">
+        {/* Left Visual Panel: 65–70% width on Desktop, containing the HD MSK Logistics Hero Image */}
+        <div className="w-full lg:w-[67%] xl:w-[68%] bg-[#F5F9FC] border-b lg:border-b-0 lg:border-r border-slate-200/80 p-3 sm:p-5 lg:p-6 xl:p-7 flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center rounded-xl sm:rounded-2xl lg:rounded-[24px] bg-white border border-[#DCE7F3] shadow-xs p-1.5 sm:p-2.5 overflow-hidden">
+            <img
+              src="/images/msk-login-hero-hd.jpg"
+              alt="MSK Logistic Solution - Integrated Logistics Management ERP. Management, Invoicing & Container Operations"
+              loading="eager"
+              decoding="async"
+              className="w-full h-full max-h-[380px] sm:max-h-[460px] lg:max-h-[620px] xl:max-h-[660px] object-contain object-center select-none"
+            />
+            <h1 className="sr-only">
+              MSK Logistic Solution - Integrated Logistics Management ERP
+            </h1>
+            <p className="sr-only">
+              Management, Invoicing & Container Operations
+            </p>
+          </div>
         </div>
 
-        {/* Right Half: Sign-In Form & Feature Badges */}
-        <div className="w-full lg:w-[45%] bg-white flex flex-col justify-between p-6 sm:p-7 xl:p-8">
+        {/* Right Half: Sign-In Form & Feature Badges (30–35% width) */}
+        <div className="w-full lg:w-[33%] xl:w-[32%] bg-white flex flex-col justify-between p-6 sm:p-7 xl:p-8 shrink-0">
           {/* Card Header */}
           <div className="text-center pt-0.5 sm:pt-1">
             <p className="text-sm sm:text-base text-slate-600 font-medium">
