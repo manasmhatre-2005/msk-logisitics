@@ -14,16 +14,18 @@ export default {
           300: '#fca5a5',
           400: '#f87171',
           500: '#ef4444',
-          600: '#D71920', // MSK Red Primary
+          600: '#ED1C24', // MSK Red Primary
           700: '#b91c1c', // MSK Red Dark
           800: '#991b1b',
           900: '#7f1d1d',
-          red: '#D71920',
-          navy: '#0B1B3A',
-          bg: '#F5F7FB',
-          border: '#E6EAF2',
-          dark: '#0B1B3A',
-          charcoal: '#1f2937',
+          red: '#ED1C24',
+          navy: '#062746',
+          darkNavy: '#092E50',
+          bg: '#F3F7FC',
+          border: '#DCE6F1',
+          dark: '#062746',
+          charcoal: '#102B4E',
+          secondary: '#6F8198',
         },
         brand: {
           50: '#fef2f2',
@@ -32,7 +34,7 @@ export default {
           300: '#fca5a5',
           400: '#f87171',
           500: '#ef4444',
-          600: '#D71920', // Primary MSK Red
+          600: '#ED1C24', // Primary MSK Red
           700: '#b91c1c',
           800: '#991b1b',
           900: '#7f1d1d',

@@ -57,6 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'charges', label: 'Charges & Rates', icon: BadgePercent },
     { id: 'invoices', label: 'Invoices & Billing', icon: FileText },
     { id: 'payments', label: 'Payment Register', icon: CreditCard },
+    { id: 'users', label: 'User Management', icon: Users },
     { id: 'settings', label: 'Company Settings', icon: Settings },
   ];
 
@@ -86,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar Drawer: Fixed & Slide-In on Mobile/Tablet (< 1024px), Static Expanded on Desktop (>= 1024px) */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-[270px] max-w-[85vw] bg-[#0B1B3A] text-white border-r border-[#152747] flex flex-col h-screen select-none shrink-0 transition-transform duration-300 ease-in-out overflow-hidden shadow-2xl lg:shadow-none ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-[265px] max-w-[85vw] bg-[#062746] text-white border-r border-[#092E50] flex flex-col h-screen select-none shrink-0 transition-transform duration-300 ease-in-out overflow-hidden shadow-2xl lg:shadow-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
         aria-label="Sidebar Navigation"
@@ -103,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       {/* Background Port Cranes & Shipping Vessel Silhouette at Bottom Left */}
       <svg
-        className="absolute bottom-0 left-0 right-0 w-full h-56 pointer-events-none z-0 opacity-25"
+        className="absolute bottom-0 left-0 right-0 w-full h-56 pointer-events-none z-0 opacity-20"
         viewBox="0 0 270 200"
         fill="none"
         preserveAspectRatio="xMidYMax slice"
@@ -111,15 +112,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         <path
           d="M 0 160 L 40 160 L 60 140 L 120 140 L 140 160 L 270 160 L 270 200 L 0 200 Z"
-          fill="#1e3a63"
+          fill="#0c3863"
         />
         {/* Vessel Hull */}
         <path
           d="M 10 165 L 140 165 L 120 195 L 30 195 Z"
-          fill="#172e4f"
+          fill="#092d52"
         />
         {/* Port Gantry Crane 1 */}
-        <g stroke="#264b7c" strokeWidth="2" strokeLinecap="round">
+        <g stroke="#164e85" strokeWidth="2" strokeLinecap="round">
           <line x1="20" y1="160" x2="45" y2="80" />
           <line x1="60" y1="160" x2="45" y2="80" />
           <line x1="10" y1="80" x2="90" y2="80" />
@@ -129,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <line x1="90" y1="80" x2="45" y2="50" />
         </g>
         {/* Port Gantry Crane 2 */}
-        <g stroke="#1d3b63" strokeWidth="1.5" strokeLinecap="round">
+        <g stroke="#113f6e" strokeWidth="1.5" strokeLinecap="round">
           <line x1="80" y1="160" x2="105" y2="90" />
           <line x1="120" y1="160" x2="105" y2="90" />
           <line x1="70" y1="90" x2="150" y2="90" />
@@ -152,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex flex-col items-center justify-center text-center pt-2.5 space-y-1.5">
           <div className="flex items-center justify-center">
             {isAdmin ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-widest bg-[#260e19] text-[#f87171] border border-red-900/40 shadow-xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-widest bg-[#2b0f19] text-[#f87171] border border-red-900/40 shadow-xs">
                 <ShieldCheck className="w-3.5 h-3.5 text-red-500" />
                 <span>ADMIN PORTAL</span>
               </span>
@@ -184,8 +185,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               className={`w-full group flex items-center justify-between px-3.5 py-3 min-h-[44px] rounded-xl text-[12.5px] transition-all duration-150 cursor-pointer ${
                 isActive
-                  ? 'bg-[#D71920] text-white font-bold shadow-md shadow-red-950/40'
-                  : 'text-slate-300 hover:text-white hover:bg-[#152747] font-medium'
+                  ? 'bg-[#ED1C24] text-white font-bold shadow-md shadow-red-950/40'
+                  : 'text-slate-300 hover:text-white hover:bg-[#092E50] font-medium'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
@@ -211,7 +212,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* User Status Footer with initials 'MS', Name, Online dot, and Role */}
-      <div className="relative z-10 p-3.5 border-t border-[#152747] bg-[#0B1B3A]/95 backdrop-blur-md">
+      <div className="relative z-10 p-3.5 border-t border-[#092E50] bg-[#062746]/95 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 overflow-hidden">
             <div className="w-9 h-9 rounded-full bg-[#3f0c11] border border-red-900/50 text-white flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-xs tracking-wider">

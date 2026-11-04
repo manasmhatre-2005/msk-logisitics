@@ -85,14 +85,14 @@ export const Header: React.FC<HeaderProps> = ({
   const userInitials = user?.name ? user.name.charAt(0).toUpperCase() : 'A';
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between z-20 shrink-0 select-none shadow-2xs">
+    <header className="h-16 bg-white border-b border-[#DCE6F1] px-3 sm:px-6 flex items-center justify-between z-20 shrink-0 select-none shadow-xs">
       {/* Left: Mobile Hamburger Menu Button & Global Search trigger */}
       <div className="flex items-center gap-2 sm:gap-4 flex-1 max-w-xl min-w-0 mr-2 sm:mr-3">
         {/* Professional Hamburger Menu Toggle Button (Mobile/Tablet < 1024px) */}
         <button
           type="button"
           onClick={onToggleMobileNav}
-          className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl text-slate-700 hover:text-red-600 hover:bg-slate-100 transition-colors shrink-0 cursor-pointer border border-slate-200 shadow-2xs"
+          className="lg:hidden flex items-center justify-center w-10 h-10 rounded-xl text-slate-700 hover:text-red-600 hover:bg-slate-100 transition-colors shrink-0 cursor-pointer border border-[#DCE6F1] shadow-2xs"
           aria-label="Open Navigation Menu"
           title="Open Navigation Menu"
         >
@@ -103,16 +103,16 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={onOpenSearch}
-          className="w-full flex items-center justify-between bg-white hover:bg-slate-50 border border-slate-200 rounded-lg px-2.5 sm:px-3.5 py-2 text-xs text-slate-500 transition-all text-left shadow-2xs group min-w-0"
+          className="w-full flex items-center justify-between bg-white hover:bg-slate-50 border border-[#DCE6F1] rounded-lg px-2.5 sm:px-3.5 py-2 text-xs text-slate-500 transition-all text-left shadow-2xs group min-w-0"
         >
           <div className="flex items-center gap-2 min-w-0">
-            <Search className="w-4 h-4 text-slate-400 group-hover:text-red-600 transition-colors shrink-0" />
+            <Search className="w-4 h-4 text-slate-400 group-hover:text-[#ED1C24] transition-colors shrink-0" />
             <span className="font-normal text-slate-600 truncate text-[11px] sm:text-xs">
               <span className="inline md:hidden">Search ERP...</span>
               <span className="hidden md:inline">Search GSTIN, Party, Invoice, Container, Job, Shipping Line...</span>
             </span>
           </div>
-          <kbd className="hidden sm:inline-block bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-[10px] text-slate-500 font-mono shadow-2xs font-bold shrink-0 ml-1.5">
+          <kbd className="hidden sm:inline-block bg-slate-50 border border-[#DCE6F1] rounded px-1.5 py-0.5 text-[10px] text-slate-500 font-mono shadow-2xs font-bold shrink-0 ml-1.5">
             Ctrl + K
           </kbd>
         </button>
@@ -123,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* + Create Invoice Primary Button */}
         <button
           onClick={onOpenInvoiceWizard}
-          className="flex items-center gap-1 sm:gap-1.5 text-xs font-bold bg-[#e11d2e] text-white hover:bg-red-700 px-2.5 sm:px-4 py-2 rounded-lg shadow-xs shadow-red-500/20 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer shrink-0 min-h-[38px]"
+          className="flex items-center gap-1 sm:gap-1.5 text-xs font-bold bg-[#ED1C24] text-white hover:bg-[#c91219] px-2.5 sm:px-4 py-2 rounded-lg shadow-xs shadow-red-500/20 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer shrink-0 min-h-[38px]"
           title="Create New Invoice"
         >
           <Plus className="w-3.5 h-3.5 stroke-[3]" />
@@ -132,10 +132,10 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Quick Action Pill Buttons (Party, Job, Container) */}
-        <div className="hidden lg:flex items-center gap-2 border-r border-slate-200 pr-3">
+        <div className="hidden lg:flex items-center gap-2 border-r border-[#DCE6F1] pr-3">
           <button
             onClick={onOpenAddPartyModal}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-white text-slate-800 hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg transition-all shadow-2xs"
+            className="flex items-center gap-1.5 text-xs font-semibold bg-white text-[#102B4E] hover:bg-slate-50 border border-[#DCE6F1] px-3 py-1.5 rounded-lg transition-all shadow-2xs"
             title="Add Party"
           >
             <Users className="w-3.5 h-3.5 text-slate-600" />
@@ -143,7 +143,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
           <button
             onClick={onOpenAddJobModal}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-white text-slate-800 hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg transition-all shadow-2xs"
+            className="flex items-center gap-1.5 text-xs font-semibold bg-white text-[#102B4E] hover:bg-slate-50 border border-[#DCE6F1] px-3 py-1.5 rounded-lg transition-all shadow-2xs"
             title="Add Job"
           >
             <Ship className="w-3.5 h-3.5 text-slate-600" />
@@ -151,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
           <button
             onClick={onOpenAddContainerModal}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-white text-slate-800 hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg transition-all shadow-2xs"
+            className="flex items-center gap-1.5 text-xs font-semibold bg-white text-[#102B4E] hover:bg-slate-50 border border-[#DCE6F1] px-3 py-1.5 rounded-lg transition-all shadow-2xs"
             title="Add Container"
           >
             <Box className="w-3.5 h-3.5 text-slate-600" />

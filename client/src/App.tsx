@@ -398,7 +398,7 @@ const MainApp: React.FC = () => {
         />
 
         {/* Page Content Scroll Area */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-8 bg-[#F5F7FB]">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 md:p-6 lg:p-7 bg-[#F3F7FC]">
           <Suspense fallback={<ViewLoadingFallback />}>
             {/* Dashboard: Dedicated view per verified role */}
           {currentTab === 'dashboard' && (
